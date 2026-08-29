@@ -1,0 +1,17 @@
+export const PHOTO_LOCATIONS = [
+  { id:'calblanque', name:'Calblanque', latitude:37.610, longitude:-0.765, type:['landscape','coast','nature'], description:'Parque Regional de Calblanque y costa natural.', notes:'Ideal para costa, paisaje y atardecer.', municipalityId:'30016' },
+  { id:'cabo-palos', name:'Cabo de Palos', latitude:37.633, longitude:-0.690, type:['coast','landscape'], description:'Faro, costa rocosa y horizontes marinos.', notes:'Interesante con nubes de evolución y viento moderado.', municipalityId:'30016' },
+  { id:'la-manga', name:'La Manga', latitude:37.720, longitude:-0.735, type:['coast','landscape'], description:'Franja litoral entre Mediterráneo y Mar Menor.', notes:'Gran variedad de orientación y reflejos.', municipalityId:'30035' },
+  { id:'mar-menor', name:'Mar Menor', latitude:37.760, longitude:-0.810, type:['coast','landscape','nature'], description:'Laguna litoral y amplios horizontes.', notes:'Especialmente útil para amanecer.', municipalityId:'30036' },
+  { id:'bolnuevo', name:'Bolnuevo', latitude:37.568, longitude:-1.311, type:['coast','landscape'], description:'Costa de Bolnuevo y Gredas.', notes:'Texturas geológicas y luz rasante.', municipalityId:'30026' },
+  { id:'mazarron', name:'Mazarrón', latitude:37.599, longitude:-1.314, type:['landscape','architecture','coast'], description:'Entorno litoral y minero.', notes:'Combina paisaje y patrimonio industrial.', municipalityId:'30026' },
+  { id:'aguilas', name:'Águilas', latitude:37.406, longitude:-1.583, type:['coast','landscape','architecture'], description:'Puerto, bahías y costa rocosa.', notes:'Buen abanico de encuadres marítimos.', municipalityId:'30003' },
+  { id:'cabo-cope', name:'Cabo Cope', latitude:37.432, longitude:-1.516, type:['coast','nature','landscape'], description:'Litoral protegido de Cabo Cope.', notes:'Naturaleza y mar con poca urbanización.', municipalityId:'30003' },
+  { id:'cartagena', name:'Cartagena', latitude:37.606, longitude:-0.986, type:['architecture','coast'], description:'Patrimonio histórico y frente marítimo.', notes:'Adecuado para arquitectura y azul nocturno.', municipalityId:'30016' },
+  { id:'sierra-espuna', name:'Sierra Espuña', latitude:37.853, longitude:-1.582, type:['nature','landscape','nocturnal'], description:'Montaña, bosque y cielos abiertos.', notes:'Muy versátil para paisaje y noche.', municipalityId:'30040' },
+  { id:'cieza', name:'Cieza', latitude:38.239, longitude:-1.419, type:['landscape','nature'], description:'Valle del Segura y paisajes agrícolas.', notes:'Especialmente interesante en estaciones florales.', municipalityId:'30019' },
+  { id:'caravaca', name:'Caravaca de la Cruz', latitude:38.106, longitude:-1.864, type:['architecture','landscape'], description:'Casco histórico y basílica.', notes:'Patrimonio y vistas elevadas.', municipalityId:'30015' },
+  { id:'jumilla', name:'Jumilla', latitude:38.479, longitude:-1.325, type:['landscape','architecture','nocturnal'], description:'Viñedos, castillo y paisaje interior.', notes:'Buen contraste entre terreno y arquitectura.', municipalityId:'30022' },
+  { id:'yecla', name:'Yecla', latitude:38.613, longitude:-1.114, type:['landscape','architecture','nocturnal'], description:'Paisaje interior y patrimonio.', notes:'Alternativa de cielo nocturno y paisaje.', municipalityId:'30044' },
+  { id:'murcia', name:'Murcia', latitude:37.983, longitude:-1.129, type:['architecture','nature'], description:'Ciudad y huerta de Murcia.', notes:'Arquitectura y fotografía urbana.', municipalityId:'30030' }
+];
