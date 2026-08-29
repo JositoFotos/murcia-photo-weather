@@ -1,303 +1,38 @@
 <!doctype html>
 <html lang="es">
-    <head>
-        <meta charset="utf-8" />
-        <meta
-            name="viewport"
-            content="width=device-width,initial-scale=1,viewport-fit=cover"
-        />
-        <meta name="theme-color" content="#0b1220" />
-        <title>Murcia Photo Weather Planner</title>
-        <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-            integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-            crossorigin=""
-        />
-        <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.css"
-        />
-        <link rel="stylesheet" href="css/styles.css" />
-    </head>
-    <body>
-        <header class="topbar">
-            <div>
-                <span class="eyebrow">MURCIA · PHOTO WEATHER</span>
-                <h1>Murcia Photo Weather Planner</h1>
-                <p>Decide dónde y cuándo fotografiar.</p>
-            </div>
-            <div class="top-actions">
-                <button id="refresh" class="primary">↻ Actualizar</button
-                ><button id="use-location">📍 Usar mi ubicación</button
-                ><button id="share">🔗 Compartir</button>
-            </div>
-        </header>
-        <main class="shell">
-            <section class="toolbar card">
-                <div class="search-wrap">
-                    <label for="search-input"
-                        >Buscar municipio, localización o coordenadas</label
-                    >
-                    <div class="search-box">
-                        <input
-                            id="search-input"
-                            autocomplete="off"
-                            placeholder="Calblanque · Cartagena · 37.6,-0.98"
-                        /><span>⌕</span>
-                    </div>
-                    <div id="suggestions" class="suggestions"></div>
-                </div>
-                <div class="date-wrap">
-                    <label for="date-picker">Fecha</label>
-                    <div class="date-controls">
-                        <input
-                            id="date-picker"
-                            type="date"
-                            aria-label="Fecha de consulta"
-                        />
-                        <div id="date-tabs" class="date-tabs"></div>
-                    </div>
-                </div>
-                <div id="aemet-help" class="aemet-help" hidden></div>
-            </section>
-            <section class="mode-strip card">
-                <span class="section-kicker">Modo fotográfico</span>
-                <div class="mode-buttons">
-                    <button data-mode="landscape" class="active">
-                        📷 Paisaje</button
-                    ><button data-mode="sunriseSunset">
-                        🌅 Amanecer / Atardecer</button
-                    ><button data-mode="coast">🌊 Costa</button
-                    ><button data-mode="nature">🌿 Naturaleza</button
-                    ><button data-mode="architecture">🏛 Arquitectura</button
-                    ><button data-mode="nocturnal">🌌 Nocturna</button>
-                </div>
-            </section>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>Murcia Photo Weather Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="topbar"><div><span class="eyebrow">MURCIA · PHOTO WEATHER</span><h1>Murcia Photo Weather Planner</h1><p>Decide dónde y cuándo fotografiar.</p></div><div class="top-actions"><button id="refresh" class="primary">↻ Actualizar</button><button id="use-location">📍 Usar mi ubicación</button><button id="share">🔗 Compartir</button></div></header>
+<main class="shell">
+  <section class="toolbar card"><div class="search-wrap"><label for="search-input">Buscar municipio, localización o coordenadas</label><div class="search-box"><input id="search-input" autocomplete="off" placeholder="Calblanque · Cartagena · 37.6,-0.98"><span>⌕</span></div><div id="suggestions" class="suggestions"></div></div><div class="date-wrap"><label for="date-picker">Fecha</label><div class="date-controls"><input id="date-picker" type="date" aria-label="Fecha de consulta"><div id="date-tabs" class="date-tabs"></div></div></div><div id="aemet-help" class="aemet-help" hidden></div></section>
+  <section class="mode-strip card"><span class="section-kicker">Modo fotográfico</span><div class="mode-buttons"> <button data-mode="landscape" class="active">📷 Paisaje</button><button data-mode="sunriseSunset">🌅 Amanecer / Atardecer</button><button data-mode="coast">🌊 Costa</button><button data-mode="nature">🌿 Naturaleza</button><button data-mode="architecture">🏛 Arquitectura</button><button data-mode="nocturnal">🌌 Nocturna</button></div></section>
 
-            <section class="hero-grid">
-                <article class="card location-card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker">Localización</span>
-                            <h2 id="location-name">Murcia</h2>
-                            <div id="municipality" class="muted">Murcia</div>
-                        </div>
-                        <button
-                            id="add-favorite"
-                            aria-label="Añadir a favoritos"
-                        >
-                            ☆ Favorito
-                        </button>
-                    </div>
-                    <div id="map" class="map"></div>
-                    <div class="coord-line">
-                        <span id="coordinates">37.98300, -1.12900</span
-                        ><span class="source-tag">AEMET por municipio</span>
-                    </div>
-                </article>
-                <article class="card score-card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker"
-                                >Índice fotográfico</span
-                            >
-                            <div id="score" class="score">—</div>
-                            <div id="score-label" class="score-label">
-                                SIN DATOS
-                            </div>
-                        </div>
-                        <div class="score-ring" aria-hidden="true"></div>
-                    </div>
-                    <div id="indice-grid" class="index-grid"></div>
-                    <div class="factor-columns">
-                        <div>
-                            <h3>Factores positivos</h3>
-                            <ul id="positives"></ul>
-                        </div>
-                        <div>
-                            <h3>Factores a vigilar</h3>
-                            <ul id="negatives"></ul>
-                        </div>
-                    </div>
-                    <div class="recommendation">
-                        <span>Recomendación</span>
-                        <p id="recommendation">—</p>
-                    </div>
-                </article>
-            </section>
+  <section class="hero-grid">
+    <article class="card location-card"><div class="card-head"><div><span class="section-kicker">Localización</span><h2 id="location-name">Murcia</h2><div id="municipality" class="muted">Murcia</div></div><button id="add-favorite" aria-label="Añadir a favoritos">☆ Favorito</button></div><div id="map" class="map"></div><div class="coord-line"><span id="coordinates">37.98300, -1.12900</span><span class="source-tag">AEMET por municipio</span></div></article>
+    <article class="card score-card"><div class="card-head"><div><span class="section-kicker">Índice fotográfico</span><div id="score" class="score">—</div><div id="score-label" class="score-label">SIN DATOS</div></div><div class="score-ring" aria-hidden="true"></div></div><div id="indice-grid" class="index-grid"></div><div class="factor-columns"><div><h3>Factores positivos</h3><ul id="positives"></ul></div><div><h3>Factores a vigilar</h3><ul id="negatives"></ul></div></div><div class="recommendation"><span>Recomendación</span><p id="recommendation">—</p></div></article>
+  </section>
 
-            <section class="grid-2">
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker">Luz</span>
-                            <h2>Sol y crepúsculos</h2>
-                        </div>
-                    </div>
-                    <div class="sun-stats">
-                        <div>
-                            <span>Amanecer</span
-                            ><strong id="sunrise">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Hora dorada AM</span
-                            ><strong id="golden-morning">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Hora azul AM</span
-                            ><strong id="blue-morning">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Mediodía solar</span
-                            ><strong id="day-length">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Hora dorada PM</span
-                            ><strong id="golden-evening">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Hora azul PM</span
-                            ><strong id="blue-evening">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Atardecer</span
-                            ><strong id="sunset">N/D</strong>
-                        </div>
-                    </div>
-                </article>
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker">Meteorología</span>
-                            <h2>Condiciones</h2>
-                        </div>
-                    </div>
-                    <div class="weather-grid">
-                        <div>
-                            <span>Temperatura</span
-                            ><strong id="temperature">N/D</strong
-                            ><small id="temp-range">N/D</small>
-                        </div>
-                        <div>
-                            <span>Prob. lluvia</span
-                            ><strong id="rain-prob">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Viento</span><strong id="wind">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Tormentas</span
-                            ><strong id="storm">N/D</strong>
-                        </div>
-                        <div>
-                            <span>Humedad</span
-                            ><strong id="humidity">N/D</strong>
-                        </div>
-                    </div>
-                </article>
-            </section>
+  <section class="grid-2"><article class="card"><div class="card-head"><div><span class="section-kicker">Luz</span><h2>Sol y crepúsculos</h2></div></div><div class="sun-stats"><div><span>Amanecer</span><strong id="sunrise">N/D</strong></div><div><span>Hora dorada AM</span><strong id="golden-morning">N/D</strong></div><div><span>Hora azul AM</span><strong id="blue-morning">N/D</strong></div><div><span>Mediodía solar</span><strong id="day-length">N/D</strong></div><div><span>Hora dorada PM</span><strong id="golden-evening">N/D</strong></div><div><span>Hora azul PM</span><strong id="blue-evening">N/D</strong></div><div><span>Atardecer</span><strong id="sunset">N/D</strong></div></div></article>
+  <article class="card"><div class="card-head"><div><span class="section-kicker">Meteorología</span><h2>Condiciones</h2></div></div><div class="weather-grid"><div><span>Temperatura</span><strong id="temperature">N/D</strong><small id="temp-range">N/D</small></div><div><span>Prob. lluvia</span><strong id="rain-prob">N/D</strong></div><div><span>Viento</span><strong id="wind">N/D</strong></div><div><span>Tormentas</span><strong id="storm">N/D</strong></div><div><span>Humedad</span><strong id="humidity">N/D</strong></div></div></article></section>
 
-            <section class="grid-2">
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker">Mejores horas</span>
-                            <h2>Ventanas fotográficas</h2>
-                        </div>
-                    </div>
-                    <div id="windows" class="windows"></div>
-                </article>
-                <article class="card chart-card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker">Meteograma</span>
-                            <h2>Próximas horas</h2>
-                        </div>
-                    </div>
-                    <div class="chart-wrap">
-                        <canvas id="weather-chart"></canvas>
-                    </div>
-                </article>
-            </section>
+  <section class="grid-2"><article class="card"><div class="card-head"><div><span class="section-kicker">Mejores horas</span><h2>Ventanas fotográficas</h2></div></div><div id="windows" class="windows"></div></article><article class="card chart-card"><div class="card-head"><div><span class="section-kicker">Meteograma</span><h2>Próximas horas</h2></div></div><div class="chart-meta"><span>🌡 Temperatura · °C</span><span>🌧 Prob. lluvia · %</span><span>💨 Viento · km/h</span></div><p class="chart-help">Las etiquetas del eje X muestran la hora local. Pasa el ratón por cualquier punto para consultar los valores de esa hora.</p><div class="chart-wrap"><canvas id="weather-chart" aria-label="Meteograma horario de temperatura, probabilidad de lluvia y viento"></canvas></div></article></section>
 
-            <section class="card opportunities">
-                <div class="card-head">
-                    <div>
-                        <span class="section-kicker"
-                            >Mapa de oportunidades</span
-                        >
-                        <h2>Explorar Murcia</h2>
-                        <p class="muted">
-                            Analiza las localizaciones fotográficas disponibles
-                            y ordénalas por calidad.
-                        </p>
-                    </div>
-                    <button id="explore" class="primary">
-                        🔎 Explorar Murcia
-                    </button>
-                </div>
-                <div id="ranking" class="ranking"></div>
-            </section>
+  <section class="card opportunities"><div class="card-head"><div><span class="section-kicker">Mapa de oportunidades</span><h2>Explorar Murcia</h2><p class="muted">Analiza las localizaciones fotográficas disponibles y ordénalas por calidad.</p></div><button id="explore" class="primary">🔎 Explorar Murcia</button></div><div id="ranking" class="ranking"></div></section>
 
-            <section class="grid-2">
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker"
-                                >Comparte / exporta</span
-                            >
-                            <h2>Informe</h2>
-                        </div>
-                    </div>
-                    <div class="export-actions">
-                        <button id="copy-summary">Copiar resumen</button
-                        ><button id="export-csv">Exportar CSV</button
-                        ><button id="export-json">Exportar JSON</button
-                        ><button onclick="window.print()">
-                            Imprimir / PDF
-                        </button>
-                    </div>
-                    <p id="source-note" class="muted">
-                        Datos meteorológicos: AEMET.
-                    </p>
-                </article>
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <span class="section-kicker"
-                                >Historial y favoritos</span
-                            >
-                            <h2>Consultas guardadas</h2>
-                        </div>
-                        <button id="clear-history">Borrar historial</button>
-                    </div>
-                    <div class="split-list">
-                        <div>
-                            <h3>Historial</h3>
-                            <div id="history-list"></div>
-                        </div>
-                        <div>
-                            <h3>Favoritos</h3>
-                            <div id="favorite-list"></div>
-                        </div>
-                    </div>
-                </article>
-            </section>
-        </main>
-        <footer class="footer">
-            <span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span
-            ><span id="app-status" data-state="idle">Inicializando…</span>
-        </footer>
-        <div id="toast" class="toast"></div>
-        <script
-            src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""
-        ></script>
-        <script src="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-        <script type="module" src="js/app.js"></script>
-    </body>
-</html>
+  <section class="grid-2"><article class="card"><div class="card-head"><div><span class="section-kicker">Comparte / exporta</span><h2>Informe</h2></div></div><div class="export-actions"><button id="copy-summary">Copiar resumen</button><button id="export-csv">Exportar CSV</button><button id="export-json">Exportar JSON</button><button onclick="window.print()">Imprimir / PDF</button></div><p id="source-note" class="muted">Datos meteorológicos: AEMET.</p></article><article class="card"><div class="card-head"><div><span class="section-kicker">Historial y favoritos</span><h2>Consultas guardadas</h2></div><button id="clear-history">Borrar historial</button></div><div class="split-list"><div><h3>Historial</h3><div id="history-list"></div></div><div><h3>Favoritos</h3><div id="favorite-list"></div></div></div></article></section>
+</main>
+<footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="app-status" data-state="idle">Inicializando…</span></footer><div id="toast" class="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body></html>

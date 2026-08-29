@@ -1,5 +1,8 @@
 export const CONFIG = {
-  AEMET_API_KEY: 'MI_API_KEY',
+  // Para la publicación en GitHub Pages deja esta clave vacía y usa AEMET_PROXY_URL.
+  // Para uso local directo puedes poner temporalmente tu clave real de AEMET.
+  AEMET_API_KEY: '',
+  AEMET_PROXY_URL: '',
   AEMET_BASE_URL: 'https://opendata.aemet.es/opendata/api',
   CACHE_DURATION: 15 * 60 * 1000,
   DEFAULT_MAP_CENTER: [37.75, -1.15],

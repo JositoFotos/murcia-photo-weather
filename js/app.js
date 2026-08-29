@@ -81,12 +81,103 @@ function refreshDashboard(){
 }
 
 function renderWindows(){ const windows=calculateBestPhotographyWindows(getHourlyForDate(state.weather,state.date),state.astronomy,state.mode); $('windows').innerHTML=windows.length?windows.map(w=>`<div class="window-row"><strong>${formatTime(w.start)}</strong><span>${w.label}</span><b>${w.score}/100</b></div>`).join(''):'<div class="empty">No hay datos horarios suficientes para construir ventanas.</div>'; }
-function renderMeteogram(){ const canvas=$('weather-chart'); if(state._chart) state._chart.destroy(); const hourly=getHourlyForDate(state.weather,state.date).slice(0,24); state._chart=new Chart(canvas,{type:'line',data:{labels:hourly.map(x=>x.hour??''),datasets:[{label:'Temperatura °C',data:hourly.map(x=>x.temperature)},{label:'Prob. lluvia %',data:hourly.map(x=>x.rainProbability)},{label:'Viento km/h',data:hourly.map(x=>x.wind?.speed)}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false}}}); }
+function renderMeteogram(){
+  const canvas=$('weather-chart');
+  if(state._chart) state._chart.destroy();
+  const hourly=getHourlyForDate(state.weather,state.date).slice(0,24);
+  if(!hourly.length) return;
+
+  const parseHour = (raw) => {
+    if(raw === null || raw === undefined || raw === '') return null;
+    const text=String(raw).trim();
+    const iso=text.match(/T(\d{2})(?::\d{2})?/);
+    if(iso) return Number(iso[1]);
+    const range=text.match(/^(\d{1,2})(?:[-/]\d{1,2})?$/);
+    if(range) { const h=Number(range[1]); return h>=0 && h<=23 ? h : null; }
+    const compact=text.match(/^(\d{4})$/);
+    if(compact) { const h=Number(compact[1].slice(0,2)); return h>=0 && h<=23 ? h : null; }
+    const match=text.match(/(?:^|[^0-9])(\d{1,2})(?::\d{2})?/);
+    if(match) { const h=Number(match[1]); return h>=0 && h<=23 ? h : null; }
+    return null;
+  };
+
+  const extracted=hourly.map(x=>parseHour(x?.period ?? x?.hour ?? x?.time));
+  const validCount=extracted.filter(Number.isInteger).length;
+  const allSame=validCount>1 && new Set(extracted.filter(Number.isInteger)).size===1;
+  const firstHour=validCount ? extracted.find(Number.isInteger) : 0;
+
+  // Prefer the hour carried by AEMET. If a malformed payload repeats the same
+  // hour for every point, use the ordered hourly sequence rather than drawing
+  // twenty-four misleading "00" labels.
+  const hours=hourly.map((x,i)=>{
+    const direct=extracted[i];
+    if(Number.isInteger(direct) && !allSame) return direct;
+    return (firstHour + i) % 24;
+  });
+  const labels=hours.map(h=>String(h).padStart(2,'0'));
+
+  state._chart=new Chart(canvas,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Temperatura',data:hourly.map(x=>x.temperature),yAxisID:'yTemp',borderWidth:2.5,pointRadius:3,tension:.25,spanGaps:true},
+        {label:'Prob. lluvia',data:hourly.map(x=>x.rainProbability),yAxisID:'yPercent',borderWidth:2,pointRadius:2,tension:.25,spanGaps:true},
+        {label:'Viento',data:hourly.map(x=>x.wind?.speed),yAxisID:'yWind',borderWidth:2,pointRadius:2,tension:.25,spanGaps:true}
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{bottom:12,left:4,right:4}},
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true,position:'top',labels:{usePointStyle:true,padding:16}},
+        tooltip:{callbacks:{
+          title:(items)=>items.length?`Hora ${items[0].label} h`:'',
+          label:(ctx)=>{
+            const v=ctx.parsed.y;
+            if(v===null||v===undefined) return `${ctx.dataset.label}: N/D`;
+            const unit=ctx.dataset.yAxisID==='yTemp'?' °C':ctx.dataset.yAxisID==='yPercent'?' %':' km/h';
+            return `${ctx.dataset.label}: ${Number(v).toLocaleString('es-ES',{maximumFractionDigits:1})}${unit}`;
+          }
+        }}
+      },
+      scales:{
+        x:{
+          type:'category',offset:true,
+          title:{display:true,text:'Hora local (h)',padding:{top:10}},
+          ticks:{display:true,autoSkip:true,maxTicksLimit:12,maxRotation:0,minRotation:0,padding:8,
+            callback:(value,index)=>labels[index] ?? ''},
+          grid:{display:false}
+        },
+        yTemp:{position:'left',title:{display:true,text:'Temperatura (°C)'},suggestedMin:Math.floor(Math.min(...hourly.map(x=>x.temperature).filter(Number.isFinite),10))-2,suggestedMax:Math.ceil(Math.max(...hourly.map(x=>x.temperature).filter(Number.isFinite),30))+2},
+        yPercent:{position:'right',min:0,max:100,title:{display:true,text:'Probabilidad de lluvia (%)'},grid:{drawOnChartArea:false}},
+        yWind:{position:'right',min:0,suggestedMax:Math.max(20,Math.ceil(Math.max(...hourly.map(x=>x.wind?.speed).filter(Number.isFinite),20)/10)*10),title:{display:true,text:'Viento (km/h)'},grid:{drawOnChartArea:false},display:false}
+      }
+    }
+  });
+}
+
 function renderEmpty(message){ $('location-name').textContent=state.location.name; ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','golden-morning','golden-evening','blue-morning','blue-evening','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS'; $('windows').innerHTML=`<div class="empty">${message}</div>`; $('positives').innerHTML=''; $('negatives').innerHTML=''; }
 
 async function getUserLocation(){ if(!navigator.geolocation){ toast('Geolocalización no disponible'); return; } navigator.geolocation.getCurrentPosition(p=>selectCoordinate(p.coords.latitude,p.coords.longitude,'Mi ubicación'),()=>toast('Permiso de ubicación denegado o no disponible'),{enableHighAccuracy:true,timeout:10000,maximumAge:300000}); }
 
-async function doExplore(){ setStatus('loading','Analizando localizaciones de Murcia…'); try { const rows=[]; for(const loc of PHOTO_LOCATIONS){ const municipality=getMunicipalityById(loc.municipalityId); const raw=await getWeatherForMunicipality(municipality); const astronomy=calculateSunTimes(state.date,loc.latitude,loc.longitude); const s=summarizeWeather(raw,state.date); const hourly=getHourlyForDate(raw,state.date); const scored=calculatePhotographyScore({rain:Math.max(...hourly.map(x=>x.precipitation).filter(Number.isFinite),NaN),rainProbability:s.rainProbability,stormProbability:s.stormProbability,wind:s.wind.mean,temperature:(s.temperature.max+s.temperature.min)/2,humidity:s.humidity.mean,hourly},state.mode==='sunriseSunset'?'sunriseSunset':state.mode); rows.push({location:loc,score:scored.score,astronomy,factors:scored.factors,weather:raw}); } const ranked=rankLocations(rows); renderOpportunities(ranked); $('ranking').innerHTML=ranked.slice(0,6).map((x,i)=>`<button class="ranking-row" data-rank-id="${x.location.id}"><span>${['🥇','🥈','🥉'][i]??`${i+1}.`} ${x.location.name}</span><strong>${x.score}/100</strong></button>`).join(''); $('ranking').querySelectorAll('[data-rank-id]').forEach(b=>b.addEventListener('click',()=>{const item=ranked.find(x=>x.location.id===b.dataset.rankId); selectCoordinate(item.location.latitude,item.location.longitude,item.location.name);})); setStatus('ready','Exploración completada.'); } catch(e){ setStatus('error',e.message); } }
+async function doExplore(){
+  setStatus('loading','Analizando localizaciones de Murcia…');
+  $('ranking').innerHTML='<div class="empty">Consultando predicciones y calculando oportunidades…</div>';
+  try {
+    const ranked = await exploreMurcia({ weatherLoader:getWeatherForMunicipality, mode:state.mode==='sunriseSunset'?'sunriseSunset':state.mode, date:state.date });
+    renderOpportunities(ranked);
+    $('ranking').innerHTML=ranked.slice(0,6).map((x,i)=>`<button class="ranking-row" data-rank-id="${x.location.id}"><span>${['🥇','🥈','🥉'][i]??`${i+1}.`} ${x.location.name}</span><strong>${x.score}/100</strong></button>`).join('') || '<div class="empty">No se han podido obtener predicciones para las localizaciones seleccionadas.</div>';
+    $('ranking').querySelectorAll('[data-rank-id]').forEach(b=>b.addEventListener('click',()=>{const item=ranked.find(x=>x.location.id===b.dataset.rankId); if(item) selectCoordinate(item.location.latitude,item.location.longitude,item.location.name);}));
+    const failed = PHOTO_LOCATIONS.length - ranked.length;
+    setStatus('ready', failed ? `Exploración completada · ${ranked.length}/${PHOTO_LOCATIONS.length} localizaciones con datos` : 'Exploración completada.');
+  } catch(e){
+    setStatus('error',`Error al explorar Murcia: ${e.message}`);
+    $('ranking').innerHTML=`<div class="empty">${e.message}</div>`;
+  }
+}
 function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.location.id,x.score])); renderPhotoLocations(PHOTO_LOCATIONS,scoreMap); renderOpportunitiesMap(ranked); }
 function renderOpportunitiesMap(ranked){ renderOpportunityMarkers(ranked.map(x=>({location:x.location,score:x.score})),loc=>selectCoordinate(loc.latitude,loc.longitude,loc.name)); }
 async function getWeatherForMunicipality(m){ const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION); if(cached)return cached; const normalized=processAemetData(await getWeatherData(m.id),m); saveWeatherCache(m.id,normalized); return normalized; }
