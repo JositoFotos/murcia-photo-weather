@@ -1,8 +1,8 @@
 export const CONFIG = {
-  // Para la publicación en GitHub Pages deja esta clave vacía y usa AEMET_PROXY_URL.
-  // Para uso local directo puedes poner temporalmente tu clave real de AEMET.
+  // Sustituye MI_API_KEY por tu clave real de AEMET OpenData.
   AEMET_API_KEY: '',
-  AEMET_PROXY_URL: '',
+  // Public deployment: Netlify Function keeps the real AEMET key server-side.
+  AEMET_PROXY_URL: 'https://murcia-photo-weather.netlify.app/.netlify/functions/aemet',
   AEMET_BASE_URL: 'https://opendata.aemet.es/opendata/api',
   CACHE_DURATION: 15 * 60 * 1000,
   DEFAULT_MAP_CENTER: [37.75, -1.15],

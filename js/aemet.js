@@ -5,9 +5,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function assertApiConfigured() {
   const key = String(CONFIG.AEMET_API_KEY ?? '').trim();
   const proxy = String(CONFIG.AEMET_PROXY_URL ?? '').trim();
-
   if (proxy) return;
-
   const invalidPlaceholders = new Set([
     '',
     'MI_API_KEY',
@@ -17,14 +15,14 @@ function assertApiConfigured() {
   ]);
 
   if (invalidPlaceholders.has(key)) {
-    const error = new Error('Configura AEMET_PROXY_URL para la versión pública o AEMET_API_KEY para uso local.');
-    error.code = 'API_CONFIG_MISSING';
+    const error = new Error('Configura AEMET_API_KEY en js/config.js con tu clave real de AEMET OpenData.');
+    error.code = 'API_KEY_MISSING';
     throw error;
   }
 
   const dotCount = (key.match(/\./g) || []).length;
   if (dotCount !== 2) {
-    const error = new Error('La AEMET_API_KEY no tiene formato JWT válido.');
+    const error = new Error('La AEMET_API_KEY no tiene formato JWT válido: debe contener exactamente dos puntos (.).');
     error.code = 'API_KEY_FORMAT';
     throw error;
   }
@@ -57,11 +55,10 @@ async function fetchJson(url, { timeoutMs = 20000, retries = 1 } = {}) {
 
 async function requestAemetEndpoint(path) {
   assertApiConfigured();
-  const proxy = String(CONFIG.AEMET_PROXY_URL ?? '').trim().replace(/\/$/, '');
-
+  const proxy = String(CONFIG.AEMET_PROXY_URL ?? '').trim();
   if (proxy) {
-    const url = `${proxy}/aemet?path=${encodeURIComponent(path)}`;
-    return fetchJson(url, { retries: 1 });
+    const url = `${proxy}?path=${encodeURIComponent(path)}`;
+    return fetchJson(url);
   }
 
   const apiKey = String(CONFIG.AEMET_API_KEY).trim();

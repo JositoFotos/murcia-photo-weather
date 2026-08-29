@@ -2,17 +2,20 @@
 
 Aplicación web local y sin proceso de compilación para planificar sesiones fotográficas en la Región de Murcia combinando predicción oficial de AEMET, cálculo solar con SunCalc y un índice fotográfico propio.
 
+## Despliegue público con GitHub Pages + Netlify
+
+La versión pública usa GitHub Pages para la interfaz y una Netlify Function para hablar con AEMET. La API Key real **no debe guardarse en GitHub**.
+
+1. En Netlify, crea una variable de entorno de tipo secret llamada `AEMET_API_KEY` con tu clave de AEMET.
+2. Netlify debe desplegar la función `netlify/functions/aemet.js`.
+3. `js/config.js` mantiene `AEMET_API_KEY` vacío y apunta a `https://murcia-photo-weather.netlify.app/.netlify/functions/aemet`.
+4. La interfaz de GitHub Pages llama a la función; la función hace las dos peticiones oficiales a AEMET y devuelve los datos al navegador.
+5. No publiques ni pegues la API Key en archivos del repositorio.
+
 ## 1. Instalación
 
 1. Descarga o descomprime el proyecto.
-2. Obtén una API Key de AEMET OpenData.
-3. Abre `js/config.js` y sustituye `MI_API_KEY` por tu clave:
-
-```js
-AEMET_API_KEY: 'TU_API_KEY'
-```
-
-La clave se usa directamente desde el navegador, tal como plantea la especificación para uso exclusivamente local. No publiques este proyecto con una clave personal en un repositorio público.
+2. Para uso local directo puedes introducir temporalmente una API Key en `js/config.js`. Para la publicación pública, deja `AEMET_API_KEY` vacío y utiliza la Netlify Function descrita arriba.
 
 ## 2. Cómo ejecutar
 
@@ -186,24 +189,3 @@ La aplicación separa el selector de fecha de la carga meteorológica: el campo 
 La respuesta de datos de AEMET se recibe como una colección JSON que contiene `prediccion.dia`; el módulo `js/aemet.js` desempaqueta esa estructura antes de normalizarla. Se mantienen los datos oficiales que existan y se muestra `N/D` cuando una variable no está disponible.
 
 Para utilizar datos reales, sustituye `MI_API_KEY` en `js/config.js` por tu API Key de AEMET OpenData y abre la aplicación mediante un servidor local (por ejemplo, Live Server en VS Code).
-
-## Publicación gratuita y protección de la API Key
-
-La versión pública está preparada para GitHub Pages + Cloudflare Workers. GitHub Pages sirve la aplicación estática y el Worker realiza las peticiones a AEMET sin exponer la API Key al navegador. Cloudflare Workers dispone actualmente de un plan gratuito con 100.000 solicitudes al día.
-
-En `js/config.js` configura únicamente la URL pública del Worker:
-
-```js
-AEMET_API_KEY: '',
-AEMET_PROXY_URL: 'https://TU-WORKER.TU-SUBDOMINIO.workers.dev',
-```
-
-Nunca subas la API Key real a GitHub. En Cloudflare, guarda la clave como Secret con el nombre `AEMET_API_KEY`.
-
-### Worker
-
-Los archivos del proxy están en `cloudflare-worker/`. El Worker acepta únicamente las rutas de predicción municipal diaria y horaria y añade CORS para el frontend de GitHub Pages.
-
-Para el despliegue con el dashboard de Cloudflare: crea un Worker, pega `cloudflare-worker/worker.js`, despliega, y después en **Settings → Variables and Secrets** crea el Secret `AEMET_API_KEY` con tu clave de AEMET.
-
-Finalmente, copia la URL del Worker a `AEMET_PROXY_URL` en `js/config.js` y sube ese cambio a GitHub.
