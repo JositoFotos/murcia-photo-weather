@@ -3,7 +3,7 @@ import { MUNICIPALITIES } from '../data/municipalities.js';
 import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
 import { getWeatherData, processAemetData } from './aemet.js';
 import { findDay, getHourlyForDate, summarizeWeather, summarizeSkyConditions, sortForecastDates, conditionLabel } from './weather.js';
-import { calculateSunTimes, formatTime, formatRange } from './astronomy.js';
+import { calculateSunTimes, formatTime, formatRange, getMoonData, calculateMilkyWay, calculateAstronomicalEvents } from './astronomy.js';
 import { calculatePhotographyScore, calculateSpecificIndices, calculateBestPhotographyWindows } from './photography.js';
 import { initMap, setLocation, renderPhotoLocations, renderOpportunities as renderOpportunityMarkers, fitMurcia } from './map.js';
 import { searchLocation, nearestMunicipality, getMunicipalityById } from './locations.js';
@@ -74,11 +74,50 @@ function refreshDashboard(){
   $('location-name').textContent=location.name; $('coordinates').textContent=`${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`; $('municipality').textContent=state.municipality?.name ?? '—'; $('score').textContent=`${score.score}/100`; $('score-label').textContent=score.category.toUpperCase(); $('temperature').textContent=`${fmt(summary.temperature.current ?? summary.temperature.max,' °C')}`; $('temp-range').textContent=`${fmt(summary.temperature.min,' °C')} – ${fmt(summary.temperature.max,' °C')}`; $('rain-prob').textContent=fmt(summary.rainProbability,' %'); $('wind').textContent=fmt(summary.wind.mean,' km/h'); $('storm').textContent=conditionLabel(summary.stormProbability); $('humidity').textContent=fmt(summary.humidity.mean,' %');
   $('sunrise').textContent=formatTime(state.astronomy.sunrise); $('sunset').textContent=formatTime(state.astronomy.sunset); $('golden-morning').textContent=formatRange(state.astronomy.goldenMorning,CONFIG.DEFAULT_TIME_ZONE); $('golden-evening').textContent=formatRange(state.astronomy.goldenEvening,CONFIG.DEFAULT_TIME_ZONE); $('blue-morning').textContent=formatRange(state.astronomy.blueMorning,CONFIG.DEFAULT_TIME_ZONE); $('blue-evening').textContent=formatRange(state.astronomy.blueEvening,CONFIG.DEFAULT_TIME_ZONE); $('day-length').textContent=state.astronomy.dayLengthMs ? `${Math.floor(state.astronomy.dayLengthMs/3600000)}h ${Math.round((state.astronomy.dayLengthMs%3600000)/60000)}m` : 'N/D';
   $('indice-grid').innerHTML=[['🌅 Amanecer',indices.sunrise],['☀️ Día',indices.day],['🌇 Atardecer',indices.sunset],['🌌 Noche',indices.night]].map(([l,v])=>`<div class="index-mini"><span>${l}</span><strong>${v}/100</strong></div>`).join('');
+  state.moon=getMoonData(date,location.latitude,location.longitude,CONFIG.DEFAULT_TIME_ZONE);
+  state.milkyWay=calculateMilkyWay(date,location.latitude,location.longitude,state.astronomy,state.moon);
+  state.astroEvents=calculateAstronomicalEvents(date,location.latitude,location.longitude,CONFIG.DEFAULT_TIME_ZONE);
   renderSkyConditions(getHourlyForDate(state.weather,date));
+  renderAstronomyPanels();
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>'; $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
   $('recommendation').textContent=score.score>=81?'Excelente oportunidad fotográfica.':score.score>=61?'Buenas condiciones: la ventana merece consideración.':score.score>=41?'Condiciones aceptables, con factores a vigilar.':'Condiciones poco favorables para este modo.';
   $('source-note').textContent=`Datos meteorológicos: AEMET. Índices fotográficos: cálculo propio. Fecha ${dateLabel(date)}.`;
   renderMeteogram(); renderWindows(); renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS);
+}
+
+function renderAstronomyPanels(){
+  const moonEl=$('moon-info');
+  const mwEl=$('milky-way-info');
+  const eventsEl=$('astro-events');
+  if(moonEl && state.moon){
+    const m=state.moon;
+    const visibility = m.rise && m.set ? `Visible aprox. ${formatTime(m.rise,CONFIG.DEFAULT_TIME_ZONE)}–${formatTime(m.set,CONFIG.DEFAULT_TIME_ZONE)}` : m.alwaysUp ? 'Por encima del horizonte toda la jornada' : m.alwaysDown ? 'Por debajo del horizonte toda la jornada' : 'Horario no disponible';
+    moonEl.innerHTML=`
+      <div class="astro-main"><span class="astro-icon moon">${m.icon}</span><div><span class="astro-kicker">Fase lunar</span><strong>${m.name}</strong><span class="astro-muted">${m.illuminationPercent}% iluminada · ${m.waxing?'creciente':'menguante'}</span></div></div>
+      <div class="astro-stats">
+        <div><span>Salida</span><strong>${m.rise?formatTime(m.rise,CONFIG.DEFAULT_TIME_ZONE):'N/D'}</strong></div>
+        <div><span>Puesta</span><strong>${m.set?formatTime(m.set,CONFIG.DEFAULT_TIME_ZONE):'N/D'}</strong></div>
+        <div><span>Distancia</span><strong>${Number.isFinite(m.distance)?`${Math.round(m.distance).toLocaleString('es-ES')} km`:'N/D'}</strong></div>
+        <div><span>Altura · 12h</span><strong>${Number.isFinite(m.altitude)?`${Math.round(m.altitude*180/Math.PI)}°`:'N/D'}</strong></div>
+      </div>
+      <p class="astro-note">${visibility}. La posición y fase se calculan con SunCalc.</p>`;
+  }
+  if(mwEl && state.milkyWay){
+    const m=state.milkyWay;
+    mwEl.innerHTML=`
+      <div class="astro-main"><span class="astro-icon">🌌</span><div><span class="astro-kicker">Centro galáctico</span><strong>${m.visible?'Ventana nocturna favorable':'No favorable en esta fecha'}</strong><span class="astro-muted">Índice de Vía Láctea: ${m.score}/100</span></div></div>
+      <div class="astro-stats">
+        <div><span>Máxima altura</span><strong>${Number.isFinite(m.bestAltitude)?`${Math.round(m.bestAltitude)}°`:'N/D'}</strong></div>
+        <div><span>Mejor momento</span><strong>${m.bestTime?formatTime(m.bestTime,CONFIG.DEFAULT_TIME_ZONE):'N/D'}</strong></div>
+        <div><span>Azimut aprox.</span><strong>${Number.isFinite(m.centerAzimuth)?`${Math.round(m.centerAzimuth)}°`:'N/D'}</strong></div>
+        <div><span>Luz lunar</span><strong>${state.moon?`${state.moon.illuminationPercent}%`:'N/D'}</strong></div>
+      </div>
+      <p class="astro-note">${m.darkStart&&m.darkEnd?`Noche astronómica aprox.: ${formatTime(m.darkStart,CONFIG.DEFAULT_TIME_ZONE)}–${formatTime(m.darkEnd,CONFIG.DEFAULT_TIME_ZONE)}.`:'La ventana se estima combinando oscuridad, posición del centro galáctico y fase lunar.'}</p>`;
+  }
+  if(eventsEl){
+    if(!state.astroEvents?.length){ eventsEl.innerHTML='<div class="empty">No hay eventos astronómicos próximos para esta fecha.</div>'; return; }
+    eventsEl.innerHTML=state.astroEvents.map(evt=>`<div class="astro-event"><span class="astro-event-icon">${evt.icon}</span><div><strong>${evt.title}</strong><span>${evt.detail}</span></div></div>`).join('');
+  }
 }
 
 function renderSkyConditions(hourly){
@@ -183,7 +222,7 @@ function renderMeteogram(){
   });
 }
 
-function renderEmpty(message){ $('location-name').textContent=state.location.name; ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','golden-morning','golden-evening','blue-morning','blue-evening','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS'; $('windows').innerHTML=`<div class="empty">${message}</div>`; $('positives').innerHTML=''; $('negatives').innerHTML=''; }
+function renderEmpty(message){ $('location-name').textContent=state.location.name; if($('moon-info')) $('moon-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('milky-way-info')) $('milky-way-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('astro-events')) $('astro-events').innerHTML='<div class="empty">Sin datos astronómicos.</div>';  ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','golden-morning','golden-evening','blue-morning','blue-evening','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS'; $('windows').innerHTML=`<div class="empty">${message}</div>`; $('positives').innerHTML=''; $('negatives').innerHTML=''; }
 
 async function getUserLocation(){ if(!navigator.geolocation){ toast('Geolocalización no disponible'); return; } navigator.geolocation.getCurrentPosition(p=>selectCoordinate(p.coords.latitude,p.coords.longitude,'Mi ubicación'),()=>toast('Permiso de ubicación denegado o no disponible'),{enableHighAccuracy:true,timeout:10000,maximumAge:300000}); }
 
@@ -206,7 +245,7 @@ function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.lo
 function renderOpportunitiesMap(ranked){ renderOpportunityMarkers(ranked.map(x=>({location:x.location,score:x.score})),loc=>selectCoordinate(loc.latitude,loc.longitude,loc.name)); }
 async function getWeatherForMunicipality(m){ const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION); if(cached)return cached; const normalized=processAemetData(await getWeatherData(m.id),m); saveWeatherCache(m.id,normalized); return normalized; }
 
-function snapshot(){ const summary=summarizeWeather(state.weather,state.date); return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, astronomy:state.astronomy, indices:calculateSpecificIndices(aggregateForScore()), summary, recommendation:$('recommendation').textContent }; }
+function snapshot(){ const summary=summarizeWeather(state.weather,state.date); return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, astronomy:state.astronomy, moon:state.moon ?? null, milkyWay:state.milkyWay ?? null, astroEvents:state.astroEvents ?? [], indices:calculateSpecificIndices(aggregateForScore()), summary, recommendation:$('recommendation').textContent }; }
 function renderHistory(){ $('history-list').innerHTML=loadHistory().slice(0,10).map((h,i)=>`<button class="history-row" data-history-index="${i}"><span>${h.location?.name??h.municipalityId}<small>${h.date} · ${h.mode}</small></span><b>${Number.isFinite(h.score)?h.score+'/100':'—'}</b></button>`).join('') || '<div class="empty">Sin consultas guardadas.</div>'; }
 function renderFavorites(){ $('favorite-list').innerHTML=loadFavorites().map(f=>`<button class="history-row" data-favorite-id="${f.id}"><span>${f.name}<small>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</small></span><b>→</b></button>`).join('') || '<div class="empty">Sin favoritos.</div>'; }
 function openFavoriteDialog(){ const name=prompt('Nombre de la localización'); if(!name)return; const category=prompt('Categoría (paisaje, costa, naturaleza, arquitectura, nocturna)')??''; const notes=prompt('Notas')??''; saveFavorite({name,latitude:state.location.latitude,longitude:state.location.longitude,category,notes}); renderFavorites(); toast('Favorito guardado'); }

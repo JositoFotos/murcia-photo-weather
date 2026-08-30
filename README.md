@@ -72,7 +72,15 @@ Los modos de fotografía aplican conjuntos de pesos distintos. Para amanecer/ata
 
 SunCalc permite añadir tiempos solares personalizados mediante `addTime`; la aplicación usa ángulos aproximados de -4° y -8° para delimitar la hora azul.
 
-## 7. Mapa
+## 7. Astronomía fotográfica ampliada
+
+La pantalla de astronomía utiliza SunCalc por CDN para calcular la fase, iluminación, salida, puesta y posición de la Luna en la localización seleccionada. SunCalc documenta `getMoonIllumination()`, `getMoonTimes()` y `getMoonPosition()` para estas magnitudes.
+
+La sección de Vía Láctea calcula una oportunidad aproximada del centro galáctico combinando su coordenada ecuatorial conocida, tiempo sidéreo local, altura sobre el horizonte, oscuridad astronómica y la iluminación lunar. No se presenta como una predicción oficial ni como una simulación de nubosidad.
+
+Los eventos muestran salida/puesta de la Luna, fases lunares cercanas y marcadores estacionales de referencia. No se presentan eclipses ni fenómenos que SunCalc no calcule directamente.
+
+
 
 Leaflet 1.9.4 + OpenStreetMap.
 
