@@ -1,5 +1,57 @@
 export const NODATA = 'N/D';
 
+const SKY_STATES = [
+  { key: 'clear', label: 'Despejado', match: ['despejado', 'cielo despejado'], icon: '☀️', level: 0 },
+  { key: 'little', label: 'Poco nuboso', match: ['poco nuboso'], icon: '🌤️', level: 1 },
+  { key: 'high', label: 'Nubes altas', match: ['nubes altas', 'nubosidad alta'], icon: '🌥️', level: 1 },
+  { key: 'intervals', label: 'Intervalos nubosos', match: ['intervalos nubosos', 'intervalos de nubes'], icon: '⛅', level: 2 },
+  { key: 'cloudy', label: 'Nuboso', match: ['nuboso'], icon: '☁️', level: 3 },
+  { key: 'very-cloudy', label: 'Muy nuboso', match: ['muy nuboso'], icon: '☁️', level: 4 },
+  { key: 'overcast', label: 'Cubierto', match: ['cubierto'], icon: '☁️', level: 5 },
+  { key: 'unknown', label: 'Sin descripción', match: [], icon: '—', level: null }
+];
+
+function classifySky(description) {
+  const text = String(description ?? '').trim().toLowerCase();
+  if (!text) return SKY_STATES.at(-1);
+  const exact = SKY_STATES.find(item => item.match.some(term => text === term));
+  if (exact) return exact;
+  const contains = SKY_STATES.find(item => item.match.some(term => text.includes(term)));
+  return contains ?? SKY_STATES.at(-1);
+}
+
+export function summarizeSkyConditions(hourly) {
+  const points = (hourly ?? []).map(row => ({ ...row, skyState: classifySky(row?.sky?.description) }));
+  const valid = points.filter(row => row.skyState.key !== 'unknown');
+  const counts = new Map();
+  for (const row of valid) counts.set(row.skyState.key, (counts.get(row.skyState.key) ?? 0) + 1);
+  const dominant = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || (SKY_STATES.find(x => x.key === a[0])?.level ?? 99) - (SKY_STATES.find(x => x.key === b[0])?.level ?? 99))[0]?.[0];
+  const dominantState = SKY_STATES.find(item => item.key === dominant) ?? SKY_STATES.at(-1);
+  const hasHighCloud = valid.some(row => row.skyState.key === 'high');
+  const hasPartlyCloudy = valid.some(row => ['intervals', 'cloudy'].includes(row.skyState.key));
+  const clearCount = valid.filter(row => ['clear', 'little'].includes(row.skyState.key)).length;
+  const photoInterest = valid.length
+    ? hasHighCloud || hasPartlyCloudy ? 'Alto' : clearCount === valid.length ? 'Moderado' : 'Bajo'
+    : 'N/D';
+  const sequence = valid.slice(0, 12).map(row => ({
+    hour: row.hour,
+    label: row.skyState.label,
+    icon: row.skyState.icon,
+    description: row.sky?.description ?? null
+  }));
+  return {
+    points,
+    dominant: dominantState.label,
+    dominantIcon: dominantState.icon,
+    photoInterest,
+    hasHighCloud,
+    hasPartlyCloudy,
+    sequence,
+    available: valid.length > 0
+  };
+}
+
 export function valueOrND(value, suffix = '') {
   return Number.isFinite(Number(value)) ? `${Number(value)}${suffix}` : NODATA;
 }

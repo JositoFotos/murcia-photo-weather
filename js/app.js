@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { MUNICIPALITIES } from '../data/municipalities.js';
 import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
 import { getWeatherData, processAemetData } from './aemet.js';
-import { findDay, getHourlyForDate, summarizeWeather, sortForecastDates, conditionLabel } from './weather.js';
+import { findDay, getHourlyForDate, summarizeWeather, summarizeSkyConditions, sortForecastDates, conditionLabel } from './weather.js';
 import { calculateSunTimes, formatTime, formatRange } from './astronomy.js';
 import { calculatePhotographyScore, calculateSpecificIndices, calculateBestPhotographyWindows } from './photography.js';
 import { initMap, setLocation, renderPhotoLocations, renderOpportunities as renderOpportunityMarkers, fitMurcia } from './map.js';
@@ -74,10 +74,34 @@ function refreshDashboard(){
   $('location-name').textContent=location.name; $('coordinates').textContent=`${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`; $('municipality').textContent=state.municipality?.name ?? '—'; $('score').textContent=`${score.score}/100`; $('score-label').textContent=score.category.toUpperCase(); $('temperature').textContent=`${fmt(summary.temperature.current ?? summary.temperature.max,' °C')}`; $('temp-range').textContent=`${fmt(summary.temperature.min,' °C')} – ${fmt(summary.temperature.max,' °C')}`; $('rain-prob').textContent=fmt(summary.rainProbability,' %'); $('wind').textContent=fmt(summary.wind.mean,' km/h'); $('storm').textContent=conditionLabel(summary.stormProbability); $('humidity').textContent=fmt(summary.humidity.mean,' %');
   $('sunrise').textContent=formatTime(state.astronomy.sunrise); $('sunset').textContent=formatTime(state.astronomy.sunset); $('golden-morning').textContent=formatRange(state.astronomy.goldenMorning,CONFIG.DEFAULT_TIME_ZONE); $('golden-evening').textContent=formatRange(state.astronomy.goldenEvening,CONFIG.DEFAULT_TIME_ZONE); $('blue-morning').textContent=formatRange(state.astronomy.blueMorning,CONFIG.DEFAULT_TIME_ZONE); $('blue-evening').textContent=formatRange(state.astronomy.blueEvening,CONFIG.DEFAULT_TIME_ZONE); $('day-length').textContent=state.astronomy.dayLengthMs ? `${Math.floor(state.astronomy.dayLengthMs/3600000)}h ${Math.round((state.astronomy.dayLengthMs%3600000)/60000)}m` : 'N/D';
   $('indice-grid').innerHTML=[['🌅 Amanecer',indices.sunrise],['☀️ Día',indices.day],['🌇 Atardecer',indices.sunset],['🌌 Noche',indices.night]].map(([l,v])=>`<div class="index-mini"><span>${l}</span><strong>${v}/100</strong></div>`).join('');
+  renderSkyConditions(getHourlyForDate(state.weather,date));
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>'; $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
   $('recommendation').textContent=score.score>=81?'Excelente oportunidad fotográfica.':score.score>=61?'Buenas condiciones: la ventana merece consideración.':score.score>=41?'Condiciones aceptables, con factores a vigilar.':'Condiciones poco favorables para este modo.';
   $('source-note').textContent=`Datos meteorológicos: AEMET. Índices fotográficos: cálculo propio. Fecha ${dateLabel(date)}.`;
   renderMeteogram(); renderWindows(); renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS);
+}
+
+function renderSkyConditions(hourly){
+  const el=$('sky-conditions');
+  if(!el) return;
+  const info=summarizeSkyConditions(hourly);
+  if(!info.available){
+    el.innerHTML='<div class="empty">AEMET no proporciona un estado del cielo horario utilizable para esta fecha.</div>';
+    return;
+  }
+  const sequence=info.sequence.map(item=>`<div class="sky-hour" title="${item.description ?? item.label}"><span>${String(item.hour).padStart(2,'0')}h</span><strong>${item.icon}</strong><small>${item.label}</small></div>`).join('');
+  el.innerHTML=`
+    <div class="sky-summary">
+      <div class="sky-main"><span class="sky-icon">${info.dominantIcon}</span><div><span class="sky-kicker">Predominio del cielo</span><strong>${info.dominant}</strong></div></div>
+      <div class="sky-interest"><span>Interés fotográfico del cielo</span><b>${info.photoInterest}</b></div>
+    </div>
+    <div class="sky-badges">
+      <span class="sky-badge">☁️ Estado del cielo: AEMET</span>
+      ${info.hasHighCloud?'<span class="sky-badge accent">🌥️ Nubes altas detectadas</span>':''}
+      ${info.hasPartlyCloudy?'<span class="sky-badge accent">⛅ Nubosidad variable</span>':''}
+    </div>
+    <div class="sky-timeline">${sequence}</div>
+    <p class="sky-note">El servicio municipal de AEMET proporciona <strong>estado del cielo</strong>; no se muestran porcentajes separados de nube baja, media y alta porque este dato no está disponible en este endpoint.</p>`;
 }
 
 function renderWindows(){ const windows=calculateBestPhotographyWindows(getHourlyForDate(state.weather,state.date),state.astronomy,state.mode); $('windows').innerHTML=windows.length?windows.map(w=>`<div class="window-row"><strong>${formatTime(w.start)}</strong><span>${w.label}</span><b>${w.score}/100</b></div>`).join(''):'<div class="empty">No hay datos horarios suficientes para construir ventanas.</div>'; }
