@@ -241,6 +241,20 @@ async function doExplore(){
     $('ranking').innerHTML=`<div class="empty">${e.message}</div>`;
   }
 }
+function updateAstronomyLink(){
+  const astroLink=$('astronomy-link');
+  const openLink=$('open-astronomy');
+  const params=new URLSearchParams({
+    lat:String(state.location.latitude),
+    lon:String(state.location.longitude),
+    date:state.date,
+    name:state.location.name || 'Ubicación seleccionada'
+  });
+  const href=`astronomia.html?${params.toString()}`;
+  if(astroLink) astroLink.href=href;
+  if(openLink) openLink.href=href;
+}
+
 function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.location.id,x.score])); renderPhotoLocations(PHOTO_LOCATIONS,scoreMap); renderOpportunitiesMap(ranked); }
 function renderOpportunitiesMap(ranked){ renderOpportunityMarkers(ranked.map(x=>({location:x.location,score:x.score})),loc=>selectCoordinate(loc.latitude,loc.longitude,loc.name)); }
 async function getWeatherForMunicipality(m){ const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION); if(cached)return cached; const normalized=processAemetData(await getWeatherData(m.id),m); saveWeatherCache(m.id,normalized); return normalized; }
