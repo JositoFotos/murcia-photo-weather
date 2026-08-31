@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Murcia Photo Weather · Astronomía</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div><span class="eyebrow">MURCIA · PHOTO WEATHER</span><h1>Murcia Photo Weather Planner</h1><p>Planificación astronómica para fotografía nocturna.</p></div>
+  <nav class="main-nav" aria-label="Secciones"><a class="nav-link" id="photo-link" href="index.html">📸 Fotografía</a><a class="nav-link active" href="astronomia.html">🌌 Astronomía</a></nav>
+</header>
+<main class="astro-page-shell">
+  <section class="card astro-toolbar" aria-label="Contexto de consulta">
+    <label>Localización<input id="astro-location" type="text" value="Murcia" aria-label="Localización astronómica"></label>
+    <label>Latitud<input id="astro-lat" type="number" step="0.00001" value="37.983" aria-label="Latitud"></label>
+    <label>Longitud<input id="astro-lon" type="number" step="0.00001" value="-1.129" aria-label="Longitud"></label>
+    <label>Fecha<input id="astro-date" type="date" aria-label="Fecha astronómica"></label>
+    <button id="astro-update" class="primary">Actualizar</button>
+  </section>
+  <section class="astro-hero">
+    <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Astronomía</span><h2>🌙 Luna</h2></div></div><div id="moon-info" class="astro-panel"></div></article>
+    <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Fotografía nocturna</span><h2>🌌 Vía Láctea</h2></div></div><div id="milky-way-info" class="astro-panel"></div></article>
+  </section>
+  <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list"></div></section>
+  <section class="card astro-back"><strong>📸 ¿Quieres comprobar el tiempo?</strong><p class="astro-page-note">Vuelve a Fotografía para consultar AEMET, nubosidad, viento, lluvia y ventanas de luz manteniendo la misma localización y fecha.</p><a id="back-photo" href="index.html">← Volver a Fotografía</a></section>
+</main>
+<footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="astro-status">Calculando…</span></footer>
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<script type="module" src="js/astronomy-page.js"></script>
+</body></html>

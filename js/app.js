@@ -52,7 +52,7 @@ async function refreshWeather(force=false){
     if(!normalized){ const raw=await getWeatherData(state.municipality.id); normalized=processAemetData(raw,state.municipality); saveWeatherCache(state.municipality.id,normalized); }
     state.weather=normalized;
     const dates=sortForecastDates(normalized); if(!dates.includes(state.date)) state.date=dates[0] ?? state.date;
-    renderDateTabs(dates); refreshDashboard();
+    renderDateTabs(dates); refreshDashboard(); updateAstronomyLink();
     saveHistory({ municipalityId:state.municipality.id, location:state.location, date:state.date, mode:state.mode, score:state.currentScore?.score ?? null });
     setStatus('ready',`Datos cargados · ${new Date(normalized.updatedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
   } catch(error){
@@ -82,7 +82,7 @@ function refreshDashboard(){
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>'; $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
   $('recommendation').textContent=score.score>=81?'Excelente oportunidad fotográfica.':score.score>=61?'Buenas condiciones: la ventana merece consideración.':score.score>=41?'Condiciones aceptables, con factores a vigilar.':'Condiciones poco favorables para este modo.';
   $('source-note').textContent=`Datos meteorológicos: AEMET. Índices fotográficos: cálculo propio. Fecha ${dateLabel(date)}.`;
-  renderMeteogram(); renderWindows(); renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS);
+  renderMeteogram(); renderWindows(); renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS); updateAstronomyLink();
 }
 
 function renderAstronomyPanels(){
