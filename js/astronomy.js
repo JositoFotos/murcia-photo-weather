@@ -145,9 +145,6 @@ export function calculateAstronomicalEvents(dateISO, latitude, longitude, timeZo
   const events = [];
   const base = new Date(`${dateISO}T12:00:00`);
   const moon = getMoonData(dateISO, latitude, longitude, timeZone);
-  if (moon.rise) events.push({ date: moon.rise, icon: '🌙', title: 'Salida de la Luna', detail: formatTime(moon.rise, timeZone), dateLabel: moon.riseDateLabel });
-  if (moon.set) events.push({ date: moon.set, icon: '🌙', title: 'Puesta de la Luna', detail: formatTime(moon.set, timeZone), dateLabel: moon.setDateLabel });
-
   const phaseEvents = findNearbyLunarPhases(base, timeZone);
   phaseEvents.forEach(evt => events.push(evt));
 
