@@ -51,25 +51,53 @@ export function getMoonData(dateISO, latitude, longitude, timeZone = 'Europe/Mad
   if (!window.SunCalc) throw new Error('SunCalc no está disponible.');
   const midday = new Date(`${dateISO}T12:00:00`);
   const illumination = window.SunCalc.getMoonIllumination(midday);
-  const times = window.SunCalc.getMoonTimes(midday, latitude, longitude, false);
   const positionAtNoon = window.SunCalc.getMoonPosition(midday, latitude, longitude);
   const phase = normalize(illumination.phase);
+  const surrounding = getMoonRiseSetAroundDate(dateISO, latitude, longitude, timeZone);
   return {
     fraction: illumination.fraction,
     phase,
     waxing: illumination.waxing !== false,
     name: moonPhaseName(phase),
     icon: moonPhaseIcon(phase),
-    rise: times.rise ?? null,
-    set: times.set ?? null,
-    alwaysUp: Boolean(times.alwaysUp),
-    alwaysDown: Boolean(times.alwaysDown),
+    rise: surrounding.rise?.time ?? null,
+    set: surrounding.set?.time ?? null,
+    riseDateLabel: surrounding.rise?.dateLabel ?? null,
+    setDateLabel: surrounding.set?.dateLabel ?? null,
+    riseDateISO: surrounding.rise?.dateISO ?? null,
+    setDateISO: surrounding.set?.dateISO ?? null,
+    alwaysUp: surrounding.alwaysUp,
+    alwaysDown: surrounding.alwaysDown,
     altitude: positionAtNoon.altitude,
     azimuth: positionAtNoon.azimuth,
     distance: positionAtNoon.distance,
     illuminationPercent: Math.round(illumination.fraction * 100),
     timeZone
   };
+}
+
+function getMoonRiseSetAroundDate(dateISO, latitude, longitude, timeZone) {
+  const base = new Date(`${dateISO}T12:00:00`);
+  const days = [-1, 0, 1];
+  const candidates = [];
+  for (const offset of days) {
+    const d = new Date(base.getTime() + offset * 86400000);
+    const times = window.SunCalc.getMoonTimes(d, latitude, longitude, false);
+    const dateSource = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const label = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', timeZone }).format(d);
+    if (times.rise) candidates.push({ kind: 'rise', time: times.rise, dateISO: dateSource, dateLabel: label });
+    if (times.set) candidates.push({ kind: 'set', time: times.set, dateISO: dateSource, dateLabel: label });
+    if (times.alwaysUp) return { rise: null, set: null, alwaysUp: true, alwaysDown: false };
+    if (times.alwaysDown) return { rise: null, set: null, alwaysUp: false, alwaysDown: true };
+  }
+  const target = base.getTime();
+  const selectClosest = kind => {
+    const items = candidates.filter(c => c.kind === kind);
+    if (!items.length) return null;
+    items.sort((a, b) => Math.abs(a.time.getTime() - target) - Math.abs(b.time.getTime() - target));
+    return items[0];
+  };
+  return { rise: selectClosest('rise'), set: selectClosest('set'), alwaysUp: false, alwaysDown: false };
 }
 
 export function calculateMilkyWay(dateISO, latitude, longitude, sunTimes, moonData) {
@@ -117,8 +145,8 @@ export function calculateAstronomicalEvents(dateISO, latitude, longitude, timeZo
   const events = [];
   const base = new Date(`${dateISO}T12:00:00`);
   const moon = getMoonData(dateISO, latitude, longitude, timeZone);
-  if (moon.rise) events.push({ date: moon.rise, icon: '🌙', title: 'Salida de la Luna', detail: formatTime(moon.rise, timeZone) });
-  if (moon.set) events.push({ date: moon.set, icon: '🌙', title: 'Puesta de la Luna', detail: formatTime(moon.set, timeZone) });
+  if (moon.rise) events.push({ date: moon.rise, icon: '🌙', title: 'Salida de la Luna', detail: formatTime(moon.rise, timeZone), dateLabel: moon.riseDateLabel });
+  if (moon.set) events.push({ date: moon.set, icon: '🌙', title: 'Puesta de la Luna', detail: formatTime(moon.set, timeZone), dateLabel: moon.setDateLabel });
 
   const phaseEvents = findNearbyLunarPhases(base, timeZone);
   phaseEvents.forEach(evt => events.push(evt));
@@ -149,9 +177,14 @@ function findNearbyLunarPhases(baseDate, timeZone) {
       if (!best || distance < best.distance) best = { d, distance };
     }
     if (best && best.distance < 0.015) {
-      const day = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', timeZone }).format(best.d);
-      const sameDay = found.some(x => x.date.toDateString() === best.d.toDateString());
-      if (!sameDay) found.push({ date: best.d, icon: t.icon, title: t.name, detail: day });
+      const day = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone }).format(best.d);
+      found.push({
+        date: best.d,
+        icon: t.icon,
+        title: t.name,
+        detail: day,
+        dateLabel: day
+      });
     }
   }
   return found;
