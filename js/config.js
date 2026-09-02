@@ -8,7 +8,8 @@ export const CONFIG = {
   DEFAULT_MAP_CENTER: [37.75, -1.15],
   DEFAULT_ZOOM: 9,
   DEFAULT_TIME_ZONE: 'Europe/Madrid',
-  OPENWEATHER_API_KEY: '',
+  // La clave se guarda como secreto OPENWEATHER_API en Netlify; nunca se publica aquí.
+  OPENWEATHER_PROXY_URL: 'https://murcia-photo-weather.netlify.app/.netlify/functions/openweather',
   MAP_LAYERS: {
     precipitation: 'precipitation_new',
     clouds: 'clouds_new',

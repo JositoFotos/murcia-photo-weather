@@ -11,3 +11,4 @@
 @media (max-width:760px){.main-nav{width:100%;margin-left:0}.nav-link{flex:1}.astro-page-shell{padding:16px}.astro-hero{grid-template-columns:1fr}}
 
 .astro-stats strong small{display:block;font-size:.72rem;font-weight:500;opacity:.7;margin-top:2px}.astro-event small{white-space:nowrap}
+.openweather-info{margin-top:15px}.openweather-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.openweather-grid>div{border:1px solid var(--line);border-radius:12px;padding:11px;background:#0e1726}.openweather-grid span{display:block;color:var(--muted);font-size:.74rem}.openweather-grid strong{display:block;margin-top:3px;font-size:1.05rem}.openweather-grid small{display:block;color:var(--muted);margin-top:3px;font-size:.7rem}.openweather-note{margin:11px 0 0;color:var(--muted);font-size:.76rem}@media(max-width:680px){.openweather-grid{grid-template-columns:1fr}}

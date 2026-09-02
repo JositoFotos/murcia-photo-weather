@@ -4,13 +4,14 @@ Aplicación web local y sin proceso de compilación para planificar sesiones fot
 
 ## Despliegue público con GitHub Pages + Netlify
 
-La versión pública usa GitHub Pages para la interfaz y una Netlify Function para hablar con AEMET. La API Key real **no debe guardarse en GitHub**.
+La versión pública puede usar GitHub Pages como interfaz y Netlify para las Functions de AEMET y OpenWeather. Las API Keys reales **no deben guardarse en GitHub**.
 
 1. En Netlify, crea una variable de entorno de tipo secret llamada `AEMET_API_KEY` con tu clave de AEMET.
-2. Netlify debe desplegar la función `netlify/functions/aemet.js`.
-3. `js/config.js` mantiene `AEMET_API_KEY` vacío y apunta a `https://murcia-photo-weather.netlify.app/.netlify/functions/aemet`.
-4. La interfaz de GitHub Pages llama a la función; la función hace las dos peticiones oficiales a AEMET y devuelve los datos al navegador.
-5. No publiques ni pegues la API Key en archivos del repositorio.
+2. Netlify debe desplegar `netlify/functions/aemet.js` y `netlify/functions/openweather.js`.
+3. En Netlify crea los secretos `AEMET_API_KEY` y `OPENWEATHER_API`.
+4. `js/config.js` mantiene vacíos los secretos y contiene solo las URL públicas de las Functions.
+5. La interfaz llama a las Functions; las Functions hablan con AEMET y OpenWeather sin exponer las claves al navegador.
+6. No publiques ni pegues ninguna API Key en archivos del repositorio.
 
 ## 1. Instalación
 
@@ -95,11 +96,22 @@ El mapa soporta:
 - mapa de oportunidades;
 - leyenda de capas.
 
-## 8. Capas meteorológicas externas
+## 8. OpenWeather como fuente complementaria
 
-AEMET es la fuente de los datos meteorológicos mostrados en el dashboard. Las capas raster meteorológicas del mapa se mantienen separadas y son opcionales.
+La aplicación utiliza, sin One Call, el endpoint gratuito **5 Day / 3 Hour Forecast** de OpenWeather. La función `netlify/functions/openweather.js` recibe únicamente latitud y longitud, añade el secreto `OPENWEATHER_API` en servidor y devuelve la respuesta al navegador.
 
-Para activarlas, rellena `OPENWEATHER_API_KEY` en `js/config.js`. Se usan las capas oficiales de Weather Maps de OpenWeather: precipitación, nubosidad, temperatura y viento. El código no envía la API key a AEMET ni mezcla ambas fuentes.
+Se aprovechan estas variables:
+
+- visibilidad (km), con máximo documentado de 10 km;
+- nubosidad total (`clouds.all`);
+- probabilidad de precipitación (`pop`);
+- precipitación de las últimas 3 horas (`rain.3h`);
+- velocidad y dirección del viento;
+- rachas (`wind.gust`) cuando existen.
+
+La tarjeta **OpenWeather** se presenta como información complementaria. No sustituye los datos oficiales de AEMET ni se inventan valores cuando falta una variable. El producto gratuito utilizado proporciona previsión cada 3 horas durante 5 días.
+
+Las capas raster de Weather Maps de OpenWeather no se activan todavía en esta versión para mantener la API key fuera del cliente; se podrán añadir posteriormente mediante un proxy específico.
 
 ## 9. Meteograma
 

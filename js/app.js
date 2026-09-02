@@ -10,8 +10,9 @@ import { searchLocation, nearestMunicipality, getMunicipalityById } from './loca
 import { loadWeatherCache, saveWeatherCache, saveHistory, loadHistory, deleteHistory, clearHistory, loadFavorites, saveFavorite, deleteFavorite } from './storage.js';
 import { exportCSV, exportJSON, copySummary, generateShareUrl } from './export.js';
 import { exploreMurcia, rankLocations } from './opportunities.js';
+import { getOpenWeatherForecast, getOpenWeatherForDate, summarizeOpenWeather } from './openweather.js';
 
-const state = { location:{...MUNICIPALITIES.find(x=>x.id==='30030')}, municipality:null, weather:null, date:localDateISO(), mode:'landscape', astronomy:null, currentScore:null, searchSelection:null };
+const state = { location:{...MUNICIPALITIES.find(x=>x.id==='30030')}, municipality:null, weather:null, openWeather:null, openWeatherSummary:null, date:localDateISO(), mode:'landscape', astronomy:null, currentScore:null, searchSelection:null };
 const $ = id => document.getElementById(id);
 
 function setStatus(kind,message) { const el=$('app-status'); el.dataset.state=kind; el.textContent=message; }
@@ -53,6 +54,7 @@ async function refreshWeather(force=false){
     state.weather=normalized;
     const dates=sortForecastDates(normalized); if(!dates.includes(state.date)) state.date=dates[0] ?? state.date;
     renderDateTabs(dates); refreshDashboard(); updateAstronomyLink();
+    await refreshOpenWeather(force);
     saveHistory({ municipalityId:state.municipality.id, location:state.location, date:state.date, mode:state.mode, score:state.currentScore?.score ?? null });
     setStatus('ready',`Datos cargados · ${new Date(normalized.updatedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
   } catch(error){
@@ -78,6 +80,7 @@ function refreshDashboard(){
   state.milkyWay=calculateMilkyWay(date,location.latitude,location.longitude,state.astronomy,state.moon);
   state.astroEvents=calculateAstronomicalEvents(date,location.latitude,location.longitude,CONFIG.DEFAULT_TIME_ZONE);
   renderSkyConditions(getHourlyForDate(state.weather,date));
+  renderOpenWeather();
   renderAstronomyPanels();
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>'; $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
   $('recommendation').textContent=score.score>=81?'Excelente oportunidad fotográfica.':score.score>=61?'Buenas condiciones: la ventana merece consideración.':score.score>=41?'Condiciones aceptables, con factores a vigilar.':'Condiciones poco favorables para este modo.';
@@ -118,6 +121,40 @@ function renderAstronomyPanels(){
     if(!state.astroEvents?.length){ eventsEl.innerHTML='<div class="empty">No hay eventos astronómicos próximos para esta fecha.</div>'; return; }
     eventsEl.innerHTML=state.astroEvents.map(evt=>`<div class="astro-event"><span class="astro-event-icon">${evt.icon}</span><div><strong>${evt.title}</strong><span>${evt.detail}</span></div></div>`).join('');
   }
+}
+
+async function refreshOpenWeather(force=false){
+  const el=$('openweather-info');
+  if(!el) return;
+  try {
+    el.innerHTML='<div class="empty">Consultando OpenWeather…</div>';
+    state.openWeather=await getOpenWeatherForecast(state.location.latitude,state.location.longitude,{force});
+    const points=getOpenWeatherForDate(state.openWeather,state.date);
+    state.openWeatherSummary=summarizeOpenWeather(points);
+    renderOpenWeather();
+  } catch(error) {
+    state.openWeather=null;
+    state.openWeatherSummary=null;
+    el.innerHTML=`<div class="empty">No se pudieron obtener datos complementarios de OpenWeather. ${error.message}</div>`;
+  }
+}
+
+function renderOpenWeather(){
+  const el=$('openweather-info');
+  if(!el) return;
+  const s=state.openWeatherSummary;
+  if(!s || !s.points.length){
+    el.innerHTML='<div class="empty">No hay previsión de OpenWeather para esta fecha. El servicio gratuito utilizado ofrece intervalos de 3 horas hasta 5 días.</div>';
+    return;
+  }
+  el.innerHTML=`<div class="openweather-grid">
+    <div><span>Visibilidad media</span><strong>${fmt(s.visibility,' km')}</strong><small>Mínima: ${fmt(s.visibilityMin,' km')}</small></div>
+    <div><span>Nubosidad total</span><strong>${fmt(s.cloudiness,' %')}</strong></div>
+    <div><span>Prob. precipitación</span><strong>${fmt(s.precipitationProbability,' %')}</strong></div>
+    <div><span>Precipitación</span><strong>${fmt(s.rain3h,' mm')}</strong><small>Acumulada en intervalos de 3 h</small></div>
+    <div><span>Viento medio</span><strong>${fmt(s.wind,' km/h')}</strong></div>
+    <div><span>Rachas máximas</span><strong>${fmt(s.gust,' km/h')}</strong></div>
+  </div>`;
 }
 
 function renderSkyConditions(hourly){
@@ -259,7 +296,7 @@ function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.lo
 function renderOpportunitiesMap(ranked){ renderOpportunityMarkers(ranked.map(x=>({location:x.location,score:x.score})),loc=>selectCoordinate(loc.latitude,loc.longitude,loc.name)); }
 async function getWeatherForMunicipality(m){ const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION); if(cached)return cached; const normalized=processAemetData(await getWeatherData(m.id),m); saveWeatherCache(m.id,normalized); return normalized; }
 
-function snapshot(){ const summary=summarizeWeather(state.weather,state.date); return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, astronomy:state.astronomy, moon:state.moon ?? null, milkyWay:state.milkyWay ?? null, astroEvents:state.astroEvents ?? [], indices:calculateSpecificIndices(aggregateForScore()), summary, recommendation:$('recommendation').textContent }; }
+function snapshot(){ const summary=summarizeWeather(state.weather,state.date); return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, openWeather:state.openWeatherSummary ?? null, astronomy:state.astronomy, moon:state.moon ?? null, milkyWay:state.milkyWay ?? null, astroEvents:state.astroEvents ?? [], indices:calculateSpecificIndices(aggregateForScore()), summary, recommendation:$('recommendation').textContent }; }
 function renderHistory(){ $('history-list').innerHTML=loadHistory().slice(0,10).map((h,i)=>`<button class="history-row" data-history-index="${i}"><span>${h.location?.name??h.municipalityId}<small>${h.date} · ${h.mode}</small></span><b>${Number.isFinite(h.score)?h.score+'/100':'—'}</b></button>`).join('') || '<div class="empty">Sin consultas guardadas.</div>'; }
 function renderFavorites(){ $('favorite-list').innerHTML=loadFavorites().map(f=>`<button class="history-row" data-favorite-id="${f.id}"><span>${f.name}<small>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</small></span><b>→</b></button>`).join('') || '<div class="empty">Sin favoritos.</div>'; }
 function openFavoriteDialog(){ const name=prompt('Nombre de la localización'); if(!name)return; const category=prompt('Categoría (paisaje, costa, naturaleza, arquitectura, nocturna)')??''; const notes=prompt('Notas')??''; saveFavorite({name,latitude:state.location.latitude,longitude:state.location.longitude,category,notes}); renderFavorites(); toast('Favorito guardado'); }
