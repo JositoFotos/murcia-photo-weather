@@ -147,14 +147,36 @@ function renderOpenWeather(){
     el.innerHTML='<div class="empty">No hay previsión de OpenWeather para esta fecha. El servicio gratuito utilizado ofrece intervalos de 3 horas hasta 5 días.</div>';
     return;
   }
-  el.innerHTML=`<div class="openweather-grid">
-    <div><span>Visibilidad media</span><strong>${fmt(s.visibility,' km')}</strong><small>Mínima: ${fmt(s.visibilityMin,' km')}</small></div>
-    <div><span>Nubosidad total</span><strong>${fmt(s.cloudiness,' %')}</strong></div>
-    <div><span>Prob. precipitación</span><strong>${fmt(s.precipitationProbability,' %')}</strong></div>
-    <div><span>Precipitación</span><strong>${fmt(s.rain3h,' mm')}</strong><small>Acumulada en intervalos de 3 h</small></div>
-    <div><span>Viento medio</span><strong>${fmt(s.wind,' km/h')}</strong></div>
-    <div><span>Rachas máximas</span><strong>${fmt(s.gust,' km/h')}</strong></div>
-  </div>`;
+
+  const points=[...s.points].sort((a,b)=>(a.timestamp??0)-(b.timestamp??0));
+  const formatHour = point => {
+    if(Number.isFinite(point.hour)) return `${String(point.hour).padStart(2,'0')}h`;
+    if(point.timestamp){
+      const parts=new Intl.DateTimeFormat('es-ES',{timeZone:CONFIG.DEFAULT_TIME_ZONE,hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date(point.timestamp));
+      return `${parts.find(x=>x.type==='hour')?.value ?? '--'}h`;
+    }
+    return '--h';
+  };
+  const fmtValue = (value, suffix='') => Number.isFinite(value) ? `${Number(value).toLocaleString('es-ES',{maximumFractionDigits:1})}${suffix}` : 'N/D';
+  const windDirection = deg => Number.isFinite(deg) ? `${Math.round(deg)}°` : 'N/D';
+  const weatherLabel = point => point.weather?.description ? point.weather.description.charAt(0).toUpperCase()+point.weather.description.slice(1) : 'Condición no disponible';
+
+  const cards=points.map(point=>`<article class="openweather-slot">
+    <div class="openweather-slot-head"><strong>${formatHour(point)}</strong><span>+3 h</span></div>
+    <div class="openweather-condition">${weatherLabel(point)}</div>
+    <div class="openweather-slot-grid">
+      <div><span>🌡 Temperatura</span><b>${fmtValue(point.temperature,' °C')}</b></div>
+      <div><span>☁️ Nubosidad</span><b>${fmtValue(point.cloudiness,' %')}</b></div>
+      <div><span>👁 Visibilidad</span><b>${fmtValue(point.visibility,' km')}</b></div>
+      <div><span>🌧 Prob. lluvia</span><b>${fmtValue(point.precipitationProbability,' %')}</b></div>
+      <div><span>🌧 Lluvia</span><b>${fmtValue(point.rain3h,' mm')}</b></div>
+      <div><span>💨 Viento</span><b>${fmtValue(point.wind?.speed,' km/h')}</b></div>
+      <div><span>↗ Dirección</span><b>${windDirection(point.wind?.direction)}</b></div>
+      <div><span>💨 Racha</span><b>${fmtValue(point.wind?.gust,' km/h')}</b></div>
+    </div>
+  </article>`).join('');
+
+  el.innerHTML=`<div class="openweather-slots" aria-label="Previsión de OpenWeather por intervalos de 3 horas">${cards}</div>`;
 }
 
 function renderSkyConditions(hourly){
