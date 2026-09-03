@@ -6,6 +6,35 @@ function absenceScore(v, badAt=50) { return Number.isFinite(v) ? clamp(100 - (v 
 function moderateScore(v, ideal, tolerance) { return Number.isFinite(v) ? clamp(100 - Math.abs(v - ideal) / tolerance * 100) : 60; }
 function positiveCloudiness(cloud, desired=55) { return Number.isFinite(cloud) ? clamp(100 - Math.abs(cloud - desired) / 55 * 100) : 60; }
 
+function cloudinessScoreForMode(data, mode='landscape') {
+  const points = Array.isArray(data.openWeatherPoints) ? data.openWeatherPoints : [];
+  const cloud = points.map(p => Number(p.cloudiness)).filter(Number.isFinite);
+  if (!cloud.length) return null;
+  const avg = cloud.reduce((a,b)=>a+b,0) / cloud.length;
+
+  // Para amanecer/atardecer y costa buscamos una cantidad intermedia de nubes:
+  // suficiente para textura y color, pero evitando un cielo completamente cubierto.
+  if (mode === 'sunriseSunset' || mode === 'coast') {
+    const desired = mode === 'coast' ? 50 : 55;
+    return clamp(100 - Math.abs(avg - desired) / 55 * 100);
+  }
+
+  // Para nocturna importa especialmente cómo entra la noche. El último tramo
+  // de 3 h del día (habitualmente 21 h) tiene un peso adicional.
+  if (mode === 'nocturnal') {
+    const evening = points.filter(p => Number.isInteger(p.hour) && p.hour >= 18);
+    const weighted = evening.length
+      ? evening.reduce((sum,p) => sum + Number(p.cloudiness) * (p.hour >= 21 ? 2.5 : p.hour >= 20 ? 1.5 : 1), 0) /
+        evening.reduce((sum,p) => sum + (p.hour >= 21 ? 2.5 : p.hour >= 20 ? 1.5 : 1), 0)
+      : avg;
+    return absenceScore(weighted, 100);
+  }
+
+  // En paisaje/naturaleza/arquitectura una cantidad moderada aporta textura,
+  // pero el beneficio es menor que en amanecer/atardecer y costa.
+  return positiveCloudiness(avg, mode === 'nature' ? 40 : 30);
+}
+
 function skyComponents(hourly) {
   const descriptions = hourly.map(x => x.sky?.description).filter(Boolean).join(' ').toLowerCase();
   const values = hourly.map(x => x.sky?.value).filter(Number.isFinite);
@@ -28,7 +57,16 @@ export function calculatePhotographyScore(data, mode='landscape') {
   const visibility = Number.isFinite(data.visibility) ? absenceScore(100-data.visibility, 100) : 60;
   const scores = { rain, rainProbability, lowCloud, midCloud, highCloud, storms, wind, temperature, humidity, visibility };
   const raw = Object.entries(weights).reduce((sum, [key, weight]) => sum + scores[key] * weight, 0);
-  const score = Math.round(clamp(raw));
+  const cloudiness = cloudinessScoreForMode(data, mode);
+  let adjusted = raw;
+  if (Number.isFinite(cloudiness)) {
+    // La nubosidad total de OpenWeather complementa el estado del cielo de AEMET.
+    // Le damos una influencia visible, pero limitada, para no dominar al resto
+    // de factores del índice.
+    const influence = mode === 'nocturnal' ? 0.18 : (mode === 'sunriseSunset' || mode === 'coast' ? 0.14 : 0.08);
+    adjusted = raw * (1 - influence) + cloudiness * influence;
+  }
+  const score = Math.round(clamp(adjusted));
   const positives = [];
   const negatives = [];
   if (highCloud >= 75) positives.push('Nubosidad alta favorable');
@@ -36,11 +74,17 @@ export function calculatePhotographyScore(data, mode='landscape') {
   if (wind >= 70) positives.push('Viento razonable para el modo');
   if (storms >= 80) positives.push('Baja probabilidad de tormentas');
   if (midCloud >= 70 && (mode === 'sunriseSunset' || mode === 'landscape')) positives.push('Nubosidad media útil para textura de cielo');
+  if (Number.isFinite(cloudiness)) {
+    if ((mode === 'sunriseSunset' || mode === 'coast') && cloudiness >= 70) positives.push('Nubosidad favorable para textura y color');
+    if ((mode === 'sunriseSunset' || mode === 'coast') && cloudiness < 30) positives.push('Cielo parcialmente despejado');
+    if (mode === 'nocturnal' && cloudiness >= 75) negatives.push('Nubosidad elevada al inicio de la noche');
+    if (mode === 'nocturnal' && cloudiness <= 25) positives.push('Nubosidad baja al inicio de la noche');
+  }
   if (lowCloud < 45) negatives.push('Nubosidad baja elevada');
   if (rainProbability < 50) negatives.push('Probabilidad de lluvia significativa');
   if (storms < 50) negatives.push('Riesgo de tormenta elevado');
   if (wind < 45) negatives.push('Viento poco favorable');
-  return { score, category: score >= 81 ? 'Excelente' : score >= 61 ? 'Bueno' : score >= 41 ? 'Aceptable' : score >= 21 ? 'Desfavorable' : 'Muy desfavorable', factors: { ...scores }, positives, negatives };
+  return { score, category: score >= 81 ? 'Excelente' : score >= 61 ? 'Bueno' : score >= 41 ? 'Aceptable' : score >= 21 ? 'Desfavorable' : 'Muy desfavorable', factors: { ...scores, cloudiness }, positives, negatives };
 }
 
 export function calculateSkyPhotographyScore(data, mode='sunriseSunset') {

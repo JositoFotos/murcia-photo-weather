@@ -2,9 +2,9 @@ import { calculateSunTimes, formatTime, getMoonData, calculateMilkyWay, calculat
 
 const $ = id => document.getElementById(id);
 function localDateISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-function paramsState(){const p=new URLSearchParams(location.search);return {lat:Number(p.get('lat')),lon:Number(p.get('lon')),date:p.get('date')||localDateISO(),name:p.get('name')||'Ubicación seleccionada'};}
+function paramsState(){const p=new URLSearchParams(location.search);return {lat:Number(p.get('lat')),lon:Number(p.get('lon')),date:p.get('date')||localDateISO(),name:p.get('name')||'Ubicación seleccionada',mode:p.get('mode')||'landscape'};}
 function fmtTime(v){return v?formatTime(v):'N/D'}
-function updateLinks(){const lat=Number($('astro-lat').value),lon=Number($('astro-lon').value),date=$('astro-date').value,name=encodeURIComponent($('astro-location').value||'Ubicación astronómica'); const q=`?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&date=${encodeURIComponent(date)}&name=${name}`; $('photo-link').href=`index.html${q}`; $('back-photo').href=`index.html${q}`;}
+function updateLinks(){const lat=Number($('astro-lat').value),lon=Number($('astro-lon').value),date=$('astro-date').value,name=encodeURIComponent($('astro-location').value||'Ubicación astronómica'),mode=new URLSearchParams(location.search).get('mode')||'landscape'; const q=`?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&date=${encodeURIComponent(date)}&name=${name}&mode=${encodeURIComponent(mode)}`; $('photo-link').href=`index.html${q}`; $('back-photo').href=`index.html${q}`;}
 function render(){
  const lat=Number($('astro-lat').value),lon=Number($('astro-lon').value),date=$('astro-date').value;
  if(!Number.isFinite(lat)||!Number.isFinite(lon)||!date){$('astro-status').textContent='Faltan datos';return;}

@@ -66,7 +66,7 @@ function renderDateTabs(dates){ const valid=(dates||[]).filter(Boolean); const p
 
 function aggregateForScore(){
   const hourly=getHourlyForDate(state.weather,state.date); const s=summarizeWeather(state.weather,state.date);
-  return { rain: Math.max(...hourly.map(x=>x.precipitation).filter(Number.isFinite),NaN), rainProbability:s.rainProbability, stormProbability:s.stormProbability, wind:s.wind.mean, temperature:(s.temperature.max+s.temperature.min)/2, humidity:s.humidity.mean, hourly };
+  return { rain: Math.max(...hourly.map(x=>x.precipitation).filter(Number.isFinite),NaN), rainProbability:s.rainProbability, stormProbability:s.stormProbability, wind:s.wind.mean, temperature:(s.temperature.max+s.temperature.min)/2, humidity:s.humidity.mean, hourly, openWeatherPoints: state.openWeather ? getOpenWeatherForDate(state.openWeather,state.date) : [] };
 }
 
 function refreshDashboard(){
@@ -85,7 +85,7 @@ function refreshDashboard(){
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>'; $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
   $('recommendation').textContent=score.score>=81?'Excelente oportunidad fotográfica.':score.score>=61?'Buenas condiciones: la ventana merece consideración.':score.score>=41?'Condiciones aceptables, con factores a vigilar.':'Condiciones poco favorables para este modo.';
   $('source-note').textContent=`Datos meteorológicos: AEMET. Índices fotográficos: cálculo propio. Fecha ${dateLabel(date)}.`;
-  renderMeteogram(); renderWindows(); renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS); updateAstronomyLink();
+  renderMeteogram(); renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS); updateAstronomyLink();
 }
 
 function renderAstronomyPanels(){
@@ -132,6 +132,7 @@ async function refreshOpenWeather(force=false){
     const points=getOpenWeatherForDate(state.openWeather,state.date);
     state.openWeatherSummary=summarizeOpenWeather(points);
     renderOpenWeather();
+    if (state.weather) refreshDashboard();
   } catch(error) {
     state.openWeather=null;
     state.openWeatherSummary=null;
@@ -165,8 +166,8 @@ function renderOpenWeather(){
     <div class="openweather-slot-head"><strong>${formatHour(point)}</strong><span>+3 h</span></div>
     <div class="openweather-condition">${weatherLabel(point)}</div>
     <div class="openweather-slot-grid">
+      <div class="ow-cloudiness"><span>☁️ Nubosidad</span><b>${fmtValue(point.cloudiness,' %')}</b></div>
       <div><span>🌡 Temperatura</span><b>${fmtValue(point.temperature,' °C')}</b></div>
-      <div><span>☁️ Nubosidad</span><b>${fmtValue(point.cloudiness,' %')}</b></div>
       <div><span>👁 Visibilidad</span><b>${fmtValue(point.visibility,' km')}</b></div>
       <div><span>🌧 Prob. lluvia</span><b>${fmtValue(point.precipitationProbability,' %')}</b></div>
       <div><span>🌧 Lluvia</span><b>${fmtValue(point.rain3h,' mm')}</b></div>
@@ -202,7 +203,6 @@ function renderSkyConditions(hourly){
     <p class="sky-note">El servicio municipal de AEMET proporciona <strong>estado del cielo</strong>; no se muestran porcentajes separados de nube baja, media y alta porque este dato no está disponible en este endpoint.</p>`;
 }
 
-function renderWindows(){ const windows=calculateBestPhotographyWindows(getHourlyForDate(state.weather,state.date),state.astronomy,state.mode); $('windows').innerHTML=windows.length?windows.map(w=>`<div class="window-row"><strong>${formatTime(w.start)}</strong><span>${w.label}</span><b>${w.score}/100</b></div>`).join(''):'<div class="empty">No hay datos horarios suficientes para construir ventanas.</div>'; }
 function renderMeteogram(){
   const canvas=$('weather-chart');
   if(state._chart) state._chart.destroy();
@@ -281,7 +281,7 @@ function renderMeteogram(){
   });
 }
 
-function renderEmpty(message){ $('location-name').textContent=state.location.name; if($('moon-info')) $('moon-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('milky-way-info')) $('milky-way-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('astro-events')) $('astro-events').innerHTML='<div class="empty">Sin datos astronómicos.</div>';  ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','golden-morning','golden-evening','blue-morning','blue-evening','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS'; $('windows').innerHTML=`<div class="empty">${message}</div>`; $('positives').innerHTML=''; $('negatives').innerHTML=''; }
+function renderEmpty(message){ $('location-name').textContent=state.location.name; if($('moon-info')) $('moon-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('milky-way-info')) $('milky-way-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('astro-events')) $('astro-events').innerHTML='<div class="empty">Sin datos astronómicos.</div>';  ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','golden-morning','golden-evening','blue-morning','blue-evening','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS';  $('positives').innerHTML=''; $('negatives').innerHTML=''; }
 
 async function getUserLocation(){ if(!navigator.geolocation){ toast('Geolocalización no disponible'); return; } navigator.geolocation.getCurrentPosition(p=>selectCoordinate(p.coords.latitude,p.coords.longitude,'Mi ubicación'),()=>toast('Permiso de ubicación denegado o no disponible'),{enableHighAccuracy:true,timeout:10000,maximumAge:300000}); }
 
@@ -301,13 +301,15 @@ async function doExplore(){
   }
 }
 function updateAstronomyLink(){
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active', b.dataset.mode===state.mode));
   const astroLink=$('astronomy-link');
   const openLink=$('open-astronomy');
   const params=new URLSearchParams({
     lat:String(state.location.latitude),
     lon:String(state.location.longitude),
     date:state.date,
-    name:state.location.name || 'Ubicación seleccionada'
+    name:state.location.name || 'Ubicación seleccionada',
+    mode:state.mode
   });
   const href=`astronomia.html?${params.toString()}`;
   if(astroLink) astroLink.href=href;
@@ -335,6 +337,9 @@ async function boot(){
   const lat=Number(params.get('lat'));
   const lon=Number(params.get('lon'));
   const sharedDate=params.get('date');
+  const sharedMode=params.get('mode');
+  const validModes=['landscape','sunriseSunset','coast','nature','architecture','nocturnal'];
+  if(sharedMode && validModes.includes(sharedMode)) state.mode=sharedMode;
   if(Number.isFinite(lat)&&Number.isFinite(lon)){
     if(sharedDate) state.date=sharedDate;
     await selectCoordinate(lat,lon,'Ubicación compartida');
