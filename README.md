@@ -1,211 +1,417 @@
 # Murcia Photo Weather Planner
 
-Aplicación web local y sin proceso de compilación para planificar sesiones fotográficas en la Región de Murcia combinando predicción oficial de AEMET, cálculo solar con SunCalc y un índice fotográfico propio.
+## ¿Qué es?
 
-## Despliegue público con GitHub Pages + Netlify
+**Murcia Photo Weather Planner** es una herramienta web gratuita pensada para fotógrafos que quieren responder rápidamente a una pregunta muy concreta:
 
-La versión pública puede usar GitHub Pages como interfaz y Netlify para las Functions de AEMET y OpenWeather. Las API Keys reales **no deben guardarse en GitHub**.
+> **¿Dónde y cuándo tengo mejores condiciones para hacer fotografías en la Región de Murcia?**
 
-1. En Netlify, crea una variable de entorno de tipo secret llamada `AEMET_API_KEY` con tu clave de AEMET.
-2. Netlify debe desplegar `netlify/functions/aemet.js` y `netlify/functions/openweather.js`.
-3. En Netlify crea los secretos `AEMET_API_KEY` y `OPENWEATHER_API`.
-4. `js/config.js` mantiene vacíos los secretos y contiene solo las URL públicas de las Functions.
-5. La interfaz llama a las Functions; las Functions hablan con AEMET y OpenWeather sin exponer las claves al navegador.
-6. No publiques ni pegues ninguna API Key en archivos del repositorio.
+La aplicación combina predicción meteorológica oficial de **AEMET**, información solar y lunar, cálculos astronómicos y un sistema propio de valoración fotográfica para convertir los datos meteorológicos en recomendaciones prácticas.
 
-## 1. Instalación
+No es una aplicación meteorológica genérica. Está orientada a la **planificación de sesiones fotográficas**, tanto diurnas como nocturnas.
 
-1. Descarga o descomprime el proyecto.
-2. Para uso local directo puedes introducir temporalmente una API Key en `js/config.js`. Para la publicación pública, deja `AEMET_API_KEY` vacío y utiliza la Netlify Function descrita arriba.
+La aplicación es web y no requiere instalación por parte del usuario. Puede utilizarse desde ordenador, tablet o teléfono móvil.
 
-## 2. Cómo ejecutar
+---
 
-La aplicación no necesita compilación ni `npm install`. Para evitar restricciones de seguridad del navegador con módulos ES y peticiones externas, se recomienda servir la carpeta con un servidor HTTP local, por ejemplo:
+## ¿Qué puedo hacer con la aplicación?
 
-```bash
-python3 -m http.server 8000
-```
+### 1. Elegir una localización
 
-Después abre `http://localhost:8000/`.
+Puedes trabajar con una localización de varias formas:
 
-Abrir `index.html` directamente con `file://` puede impedir el uso de módulos ES o peticiones CORS en algunos navegadores.
+- Buscar un municipio o localidad.
+- Seleccionar una localización fotográfica del catálogo.
+- Introducir unas coordenadas.
+- Hacer clic directamente sobre el mapa.
+- Arrastrar el marcador para ajustar la posición.
+- Utilizar **📍 Usar mi ubicación** para obtener tu posición mediante la geolocalización del dispositivo.
 
-## 3. AEMET OpenData
+Al cambiar la ubicación, la aplicación actualiza las coordenadas, la meteorología y los cálculos fotográficos y astronómicos correspondientes.
 
-El flujo implementado en `js/aemet.js` es deliberadamente de dos pasos:
+### 2. Elegir la fecha
 
-1. petición al endpoint de predicción;
-2. recepción del sobre con `estado`, `descripcion` y `datos`;
-3. segunda petición contra la URL de `datos`;
-4. validación y normalización;
-5. uso de los datos normalizados en la interfaz.
+La aplicación permite consultar las fechas disponibles para la predicción y adaptar el análisis a la fecha seleccionada.
 
-Endpoints usados:
+La fecha afecta simultáneamente a la predicción, las horas solares, la Luna, la Vía Láctea, los eventos astronómicos y las mejores ventanas fotográficas.
 
-- `/api/prediccion/especifica/municipio/diaria/{municipio}`
-- `/api/prediccion/especifica/municipio/horaria/{municipio}`
+### 3. Elegir el tipo de fotografía
 
-La horaria se limita a las horas que AEMET facilita; no se extrapolan horas futuras como si fueran datos oficiales.
+Puedes cambiar entre distintos modos fotográficos:
 
-## 4. Datos meteorológicos
+- 📷 **Paisaje**
+- 🌅 **Amanecer / Atardecer**
+- 🌊 **Costa**
+- 🌿 **Naturaleza**
+- 🏛 **Arquitectura**
+- 🌌 **Nocturna**
 
-`js/aemet.js` conserva también `raw` para facilitar inspección. Los campos que se consumen corresponden a las estructuras de predicción municipal conocidas de AEMET (`temperatura`, `humedadRelativa`, `probPrecipitacion`, `estadoCielo`, `viento`, `rachaMax`, y en horaria `probTormenta`, `precipitacion`, `vientoAndRachaMax`, etc.). Cuando no existe un dato, la interfaz muestra `N/D`.
+Cada modo modifica los criterios y pesos utilizados en el índice fotográfico. De esta manera, una situación que puede ser interesante para paisaje no tiene por qué ser igualmente buena para fotografía nocturna.
 
-## 5. Índice fotográfico
+---
 
-El índice de `js/photography.js` es propio de la aplicación. No es un producto o predicción oficial de AEMET.
+## Índice fotográfico
 
-Pondera:
+La aplicación calcula un **Índice fotográfico de 0 a 100**. Es un cálculo propio de la aplicación y **no es una predicción oficial de AEMET**.
 
-- lluvia y probabilidad de lluvia;
-- nubosidad baja/media/alta;
-- tormentas;
-- viento;
-- temperatura;
-- humedad;
-- visibilidad cuando se dispone de ese dato.
+Las categorías son:
 
-Los modos de fotografía aplican conjuntos de pesos distintos. Para amanecer/atardecer se premia una nubosidad media/alta moderada en vez de asumir que un cielo completamente despejado siempre es mejor.
+| Puntuación | Valoración |
+|---:|---|
+| 0–20 | Muy desfavorable |
+| 21–40 | Desfavorable |
+| 41–60 | Aceptable |
+| 61–80 | Bueno |
+| 81–100 | Excelente |
 
-## 6. Cálculo astronómico
+El índice puede tener en cuenta, entre otros factores disponibles, lluvia, probabilidad de precipitación, nubosidad, tormentas, viento, temperatura, humedad y visibilidad.
 
-`js/astronomy.js` utiliza SunCalc por CDN. Calcula amanecer, atardecer, hora dorada, hora azul, mediodía solar y duración del día. La pantalla fuerza el formato a `Europe/Madrid`.
+La aplicación no asume que un cielo completamente despejado sea siempre lo mejor para fotografiar. Para amaneceres y atardeceres puede valorar favorablemente determinados escenarios de nubosidad que tengan potencial para generar textura, contraste y color.
 
-SunCalc permite añadir tiempos solares personalizados mediante `addTime`; la aplicación usa ángulos aproximados de -4° y -8° para delimitar la hora azul.
+También se muestran factores positivos y negativos para explicar por qué una situación obtiene una determinada valoración.
 
-## 7. Astronomía fotográfica ampliada
+---
 
-La pantalla de astronomía utiliza SunCalc por CDN para calcular la fase, iluminación, salida, puesta y posición de la Luna en la localización seleccionada. SunCalc documenta `getMoonIllumination()`, `getMoonTimes()` y `getMoonPosition()` para estas magnitudes.
+## El cielo y la nubosidad
 
-La sección de Vía Láctea calcula una oportunidad aproximada del centro galáctico combinando su coordenada ecuatorial conocida, tiempo sidéreo local, altura sobre el horizonte, oscuridad astronómica y la iluminación lunar. No se presenta como una predicción oficial ni como una simulación de nubosidad.
+La sección **☁️ Posibilidad de nubes** utiliza la información de estado del cielo disponible en AEMET para mostrar la evolución prevista y aportar una interpretación orientada a fotografía.
 
-Los eventos muestran salida/puesta de la Luna, fases lunares cercanas y marcadores estacionales de referencia. No se presentan eclipses ni fenómenos que SunCalc no calcule directamente.
+La aplicación puede diferenciar descripciones como despejado, poco nuboso, intervalos nubosos, nuboso, muy nuboso, cubierto y otras descripciones proporcionadas por la fuente.
 
+Cuando resulta apropiado, se añade una valoración fotográfica del cielo, especialmente útil alrededor del amanecer y el atardecer.
 
+Importante: el endpoint municipal utilizado no proporciona directamente porcentajes independientes de **nubosidad baja, media y alta**, por lo que la aplicación no inventa esos valores.
 
-Leaflet 1.9.4 + OpenStreetMap.
+---
 
-El mapa soporta:
+## Meteorología
 
-- zoom y desplazamiento;
-- pantalla completa mediante `leaflet.fullscreen`;
-- clic para seleccionar coordenadas;
-- marcador arrastrable;
-- geolocalización;
-- localizaciones fotográficas;
-- mapa de oportunidades;
-- leyenda de capas.
+Los datos meteorológicos proceden de **AEMET** y pueden incluir, cuando están disponibles:
 
-## 8. OpenWeather como fuente complementaria
+- Temperatura.
+- Temperatura máxima y mínima.
+- Probabilidad de precipitación.
+- Precipitación.
+- Estado del cielo.
+- Viento y dirección.
+- Rachas.
+- Probabilidad de tormenta.
+- Humedad.
+- Visibilidad y otras variables disponibles.
 
-La aplicación utiliza, sin One Call, el endpoint gratuito **5 Day / 3 Hour Forecast** de OpenWeather. La función `netlify/functions/openweather.js` recibe únicamente latitud y longitud, añade el secreto `OPENWEATHER_API` en servidor y devuelve la respuesta al navegador.
+Cuando AEMET no proporciona un dato, la aplicación muestra **N/D** en lugar de inventar un valor.
 
-Se aprovechan estas variables:
+---
 
-- visibilidad (km), con máximo documentado de 10 km;
-- nubosidad total (`clouds.all`);
-- probabilidad de precipitación (`pop`);
-- precipitación de las últimas 3 horas (`rain.3h`);
-- velocidad y dirección del viento;
-- rachas (`wind.gust`) cuando existen.
+## Meteograma
 
-La tarjeta **OpenWeather** se presenta como información complementaria. No sustituye los datos oficiales de AEMET ni se inventan valores cuando falta una variable. El producto gratuito utilizado proporciona previsión cada 3 horas durante 5 días.
+El meteograma permite observar la evolución temporal de las principales variables meteorológicas.
 
-Las capas raster de Weather Maps de OpenWeather no se activan todavía en esta versión para mantener la API key fuera del cliente; se podrán añadir posteriormente mediante un proxy específico.
+Incluye información como:
 
-## 9. Meteograma
+- Temperatura (°C).
+- Probabilidad de lluvia (%).
+- Viento (km/h).
 
-Se usa Chart.js por CDN. Se muestran, cuando AEMET los proporciona, temperatura, probabilidad de lluvia y viento por hora.
+Las horas del eje temporal corresponden a los periodos horarios de la predicción y se muestran como horas locales. Al pasar el cursor sobre el gráfico se pueden consultar los valores correspondientes a cada hora.
 
-## 10. Localizaciones fotográficas
+---
 
-`data/photo-locations.js` contiene una colección inicial de 15 localizaciones representativas y apunta a un municipio AEMET cercano. Puedes añadir nuevas entradas sin modificar la lógica.
+## Luz: amanecer, hora azul y hora dorada
 
-Formato recomendado:
+La aplicación calcula las principales referencias solares para la coordenada y fecha seleccionadas:
 
-```js
-{
-  id,
-  name,
-  latitude,
-  longitude,
-  type: ['landscape', 'coast'],
-  description,
-  notes,
-  municipalityId
-}
-```
+- Amanecer.
+- Hora azul de la mañana.
+- Hora dorada de la mañana.
+- Mediodía solar.
+- Hora dorada de la tarde.
+- Hora azul de la tarde.
+- Atardecer.
+- Duración del día.
 
-## 11. Modos fotográficos
+Estas referencias se combinan con la meteorología para identificar las franjas con mayor interés fotográfico.
 
-Los modos y pesos están centralizados en `js/config.js`. Para añadir uno nuevo:
+El objetivo no es mostrar simplemente la hora del amanecer o del atardecer, sino responder a preguntas como:
 
-1. añade una entrada a `PHOTO_MODES`;
-2. añade su conjunto de pesos a `PHOTOGRAPHY_SCORE_WEIGHTS`;
-3. crea el botón correspondiente en `index.html`.
+- ¿Habrá nubes interesantes durante la puesta de sol?
+- ¿Hay lluvia prevista durante la hora dorada?
+- ¿El viento será razonable para la sesión?
 
-## 12. Historial, favoritos y caché
+---
 
-`js/storage.js` usa `localStorage`.
+## 🌙 Luna
 
-- Historial: máximo 50 consultas.
-- Favoritos: localizaciones personalizadas.
-- Caché: predicciones por municipio con caducidad configurable.
+La aplicación utiliza cálculos astronómicos locales para mostrar información útil para fotografía lunar y nocturna.
 
-## 13. Exportación
+Entre los datos disponibles pueden encontrarse:
 
-`js/export.js` permite:
+- Fase lunar.
+- Porcentaje iluminado.
+- Luna creciente o menguante.
+- Hora de salida.
+- Hora de puesta.
+- Altura sobre el horizonte.
+- Posición de la Luna para la localización y fecha seleccionadas.
+- Distancia aproximada a la Luna.
 
-- CSV de las horas meteorológicas normalizadas;
-- JSON del informe completo;
-- copiar un resumen textual;
-- impresión del dashboard como PDF desde el navegador.
+La información lunar es especialmente útil al combinarla con el modo **🌌 Nocturna** y con el análisis de la Vía Láctea.
 
-## 14. URL compartible
+---
 
-La aplicación acepta:
+## 🌌 Vía Láctea
+
+La aplicación incluye un análisis orientado a fotografía nocturna de la **Vía Láctea**.
+
+El objetivo es identificar cuándo existe una ventana razonable para observar el centro galáctico desde la localización elegida, teniendo en cuenta factores astronómicos y la iluminación lunar.
+
+La información puede incluir:
+
+- Visibilidad estimada del centro galáctico.
+- Ventana temporal favorable.
+- Momento de máxima altura.
+- Altura aproximada.
+- Azimut aproximado.
+- Influencia de la Luna.
+- Condiciones de oscuridad.
+- Índice orientativo de interés para fotografía de Vía Láctea.
+
+Este indicador es una **estimación fotográfica propia** y no debe interpretarse como una observación astronómica oficial o una garantía de visibilidad.
+
+---
+
+## 🔭 Eventos astronómicos
+
+La aplicación puede mostrar eventos astronómicos relevantes asociados a la fecha consultada, especialmente aquellos útiles para planificación fotográfica, como:
+
+- Luna nueva.
+- Cuarto creciente.
+- Luna llena.
+- Cuarto menguante.
+- Salida y puesta de la Luna.
+- Referencias estacionales como equinoccios y solsticios.
+
+Los eventos que requieren fuentes astronómicas específicas adicionales se incorporarán únicamente cuando puedan calcularse o verificarse de forma fiable.
+
+---
+
+## 🗺️ Mapa de oportunidades
+
+El **Mapa de oportunidades** analiza las localizaciones fotográficas disponibles y las representa según su interés fotográfico para la fecha, momento y modo seleccionados.
+
+La escala utilizada es:
+
+| Puntuación | Oportunidad |
+|---:|---|
+| 80–100 | 🟢 Excelente |
+| 65–79 | 🟢 Muy buena |
+| 50–64 | 🟡 Buena |
+| 30–49 | 🟠 Regular |
+| 0–29 | 🔴 Desfavorable |
+
+El objetivo es facilitar una lectura rápida del territorio y detectar dónde puede merecer más la pena desplazarse.
+
+---
+
+## 🔎 Explorar Murcia
+
+La función **Explorar Murcia** permite analizar automáticamente varias localizaciones fotográficas y ordenarlas según su interés.
+
+El sistema:
+
+1. analiza las localizaciones disponibles;
+2. obtiene las predicciones necesarias;
+3. calcula los índices fotográficos;
+4. calcula los índices de amanecer y atardecer;
+5. tiene en cuenta el modo fotográfico seleccionado;
+6. ordena las localizaciones;
+7. actualiza el mapa;
+8. muestra un ranking.
+
+De esta manera puedes pasar de la pregunta **“¿qué tiempo hará?”** a **“¿dónde me interesa ir a fotografiar?”**.
+
+---
+
+## 🏆 Ranking y comparador
+
+El ranking destaca las mejores localizaciones y ofrece una explicación de los principales motivos de su valoración.
+
+También es posible comparar varias localizaciones teniendo en cuenta variables como:
+
+- Índice fotográfico.
+- Calidad del cielo.
+- Lluvia.
+- Nubosidad.
+- Viento.
+- Tormentas.
+- Amanecer.
+- Atardecer.
+
+---
+
+## 📍 Localizaciones fotográficas
+
+La aplicación incluye una colección inicial de localizaciones representativas de la Región de Murcia, además de soporte para ampliar el catálogo.
+
+El sistema está preparado para trabajar con localizaciones de paisaje, costa, naturaleza, arquitectura y otros tipos de fotografía.
+
+También puede utilizarse el mapa para analizar coordenadas concretas que no formen parte del catálogo.
+
+---
+
+## ⭐ Favoritos y localizaciones personalizadas
+
+Las localizaciones personalizadas pueden guardarse localmente en el navegador con información como:
+
+- Nombre.
+- Coordenadas.
+- Categoría.
+- Notas.
+
+Los favoritos son útiles para guardar miradores, playas, puntos de paisaje o localizaciones propias que quieras consultar con frecuencia.
+
+---
+
+## 🕘 Historial
+
+Las consultas realizadas pueden guardarse localmente en el dispositivo. El historial permite recuperar consultas anteriores y eliminar registros cuando sea necesario.
+
+El almacenamiento es local: no es necesario crear una cuenta para utilizar estas funciones.
+
+---
+
+## 📤 Exportación y compartir
+
+La aplicación permite trabajar con los resultados fuera de la web mediante distintas opciones de exportación: 
+
+- **CSV** para datos meteorológicos.
+- **JSON** para guardar una consulta completa y sus datos.
+- **Imprimir / PDF** mediante la vista de impresión del navegador.
+- **Copiar resumen** al portapapeles.
+- **URL compartible** con ubicación y fecha.
+
+Una URL compartible puede seguir este esquema:
 
 ```text
 index.html?lat=37.6&lon=-0.98&date=2026-08-27
 ```
 
-Al cargar, intenta usar esas coordenadas y fecha.
+---
 
-## 15. Estructura
+## 🚀 Cómo utilizarla
+
+No necesitas instalar ningún programa ni crear una cuenta.
+
+1. Abre la web.
+2. Selecciona una localización o utiliza tu ubicación.
+3. Elige la fecha.
+4. Selecciona el tipo de fotografía.
+5. Consulta el índice fotográfico.
+6. Revisa las mejores horas.
+7. Comprueba la nubosidad y el meteograma.
+8. Consulta Luna, Vía Láctea y eventos astronómicos cuando sea relevante.
+9. Utiliza **Explorar Murcia** para comparar localizaciones.
+10. Abre los detalles de la oportunidad que más te interese y planifica la sesión.
+
+---
+
+## 📱 Uso en móvil
+
+La interfaz está diseñada para utilizarse también sobre el terreno desde un teléfono móvil.
+
+Se adapta a pantallas pequeñas, mantiene el mapa y los indicadores principales accesibles y permite consultar el ranking y las ventanas fotográficas sin necesidad de instalar una aplicación nativa.
+
+La geolocalización requiere el permiso correspondiente del navegador y puede depender de la configuración del dispositivo.
+
+---
+
+## 🌐 Fuentes de información
+
+### AEMET
+
+Los datos meteorológicos proceden de la **API oficial de AEMET OpenData**. La aplicación utiliza los recursos de predicción disponibles y no sustituye a la información oficial de AEMET.
+
+### OpenStreetMap / Leaflet
+
+El mapa se basa en **Leaflet** y servicios de mapas compatibles con **OpenStreetMap**.
+
+### SunCalc
+
+Los cálculos de posición y fases del Sol y la Luna utilizan **SunCalc**.
+
+### Cálculos propios
+
+La interpretación fotográfica, los índices, la valoración de oportunidades, las mejores ventanas y la estimación específica de interés fotográfico son funcionalidades propias de la aplicación.
+
+---
+
+## ⚠️ Fiabilidad y limitaciones
+
+La aplicación está pensada como herramienta de **planificación fotográfica**, no como sustituto de una previsión meteorológica oficial ni como garantía de que una sesión vaya a producir determinadas condiciones.
+
+Los índices fotográficos son orientativos y dependen de los datos disponibles, la localización, la fecha y el modo fotográfico.
+
+Cuando una variable no está disponible en la fuente de datos correspondiente, la aplicación evita inventarla y muestra **N/D** o una indicación equivalente.
+
+Las condiciones meteorológicas pueden cambiar y siempre es recomendable consultar la información oficial más reciente antes de desplazarse.
+
+---
+
+## 💡 Filosofía de la aplicación
+
+Murcia Photo Weather Planner intenta reducir la información meteorológica y astronómica a una decisión práctica:
 
 ```text
-murcia-photo-weather/
-├── index.html
-├── css/styles.css
-├── js/
-│   ├── app.js
-│   ├── config.js
-│   ├── aemet.js
-│   ├── weather.js
-│   ├── photography.js
-│   ├── astronomy.js
-│   ├── map.js
-│   ├── opportunities.js
-│   ├── storage.js
-│   ├── export.js
-│   └── locations.js
-├── data/
-│   ├── municipalities.js
-│   └── photo-locations.js
-└── README.md
+ELIJO FECHA
+     ↓
+ELIJO TIPO DE FOTOGRAFÍA
+     ↓
+ELIJO O ANALIZO UNA LOCALIZACIÓN
+     ↓
+EL SISTEMA COMBINA METEOROLOGÍA + LUZ + ASTRONOMÍA
+     ↓
+MAPA DE OPORTUNIDADES
+     ↓
+RANKING DE LOCALIZACIONES
+     ↓
+MEJOR HORA
+     ↓
+RECOMENDACIÓN FOTOGRÁFICA
 ```
 
-## 16. Límites deliberados
+La pregunta que guía la aplicación es siempre:
 
-- AEMET no proporciona una predicción específica para cada punto arbitrario del mapa: la app usa el municipio como referencia meteorológica y mantiene la coordenada fotográfica por separado.
-- El mapa no inventa meteorología por píxel.
-- Si AEMET no entrega un campo, la aplicación muestra `N/D`.
-- Los resultados del índice fotográfico no deben interpretarse como predicciones oficiales.
+> **¿Dónde y cuándo tengo mejores condiciones para hacer fotografías?**
 
-## Corrección de la interfaz de fechas y AEMET
+---
 
-La aplicación separa el selector de fecha de la carga meteorológica: el campo de fecha HTML permanece disponible aunque AEMET no esté configurado o falle temporalmente. Al cargar una respuesta de AEMET se normalizan las fechas a `YYYY-MM-DD`, que es el formato utilizado por el selector nativo.
+## 🔒 Privacidad
 
-La respuesta de datos de AEMET se recibe como una colección JSON que contiene `prediccion.dia`; el módulo `js/aemet.js` desempaqueta esa estructura antes de normalizarla. Se mantienen los datos oficiales que existan y se muestra `N/D` cuando una variable no está disponible.
+Las preferencias, favoritos e historial se almacenan localmente en el navegador cuando la funcionalidad correspondiente está disponible.
 
-Para utilizar datos reales, sustituye `MI_API_KEY` en `js/config.js` por tu API Key de AEMET OpenData y abre la aplicación mediante un servidor local (por ejemplo, Live Server en VS Code).
+La aplicación no necesita una cuenta de usuario para su uso normal.
+
+La geolocalización solamente se utiliza cuando el usuario la solicita y concede permiso al navegador.
+
+---
+
+## 📸 Uso recomendado
+
+Para una sesión real se recomienda revisar conjuntamente:
+
+- índice fotográfico;
+- lluvia y tormentas;
+- evolución del cielo y nubosidad;
+- viento;
+- ventana solar;
+- Luna y oscuridad en fotografía nocturna;
+- posición y visibilidad de la Vía Láctea;
+- ranking de localizaciones.
+
+La utilidad del programa está precisamente en **combinar todas estas piezas en una misma decisión fotográfica**.
+
+---
+
+## Estado del proyecto
+
+Murcia Photo Weather Planner es un proyecto en evolución. Se irán incorporando mejoras y nuevas fuentes o cálculos astronómicos cuando aporten información útil y fiable para la planificación fotográfica en la Región de Murcia.

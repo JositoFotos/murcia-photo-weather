@@ -79,7 +79,6 @@ function refreshDashboard(){
   state.moon=getMoonData(date,location.latitude,location.longitude,CONFIG.DEFAULT_TIME_ZONE);
   state.milkyWay=calculateMilkyWay(date,location.latitude,location.longitude,state.astronomy,state.moon);
   state.astroEvents=calculateAstronomicalEvents(date,location.latitude,location.longitude,CONFIG.DEFAULT_TIME_ZONE);
-  renderSkyConditions(getHourlyForDate(state.weather,date));
   renderOpenWeather();
   renderAstronomyPanels();
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>'; $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
@@ -321,7 +320,7 @@ function renderOpportunitiesMap(ranked){ renderOpportunityMarkers(ranked.map(x=>
 async function getWeatherForMunicipality(m){ const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION); if(cached)return cached; const normalized=processAemetData(await getWeatherData(m.id),m); saveWeatherCache(m.id,normalized); return normalized; }
 
 function snapshot(){ const summary=summarizeWeather(state.weather,state.date); return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, openWeather:state.openWeatherSummary ?? null, astronomy:state.astronomy, moon:state.moon ?? null, milkyWay:state.milkyWay ?? null, astroEvents:state.astroEvents ?? [], indices:calculateSpecificIndices(aggregateForScore()), summary, recommendation:$('recommendation').textContent }; }
-function renderHistory(){ $('history-list').innerHTML=loadHistory().slice(0,10).map((h,i)=>`<button class="history-row" data-history-index="${i}"><span>${h.location?.name??h.municipalityId}<small>${h.date} · ${h.mode}</small></span><b>${Number.isFinite(h.score)?h.score+'/100':'—'}</b></button>`).join('') || '<div class="empty">Sin consultas guardadas.</div>'; }
+function renderHistory(){ $('history-list').innerHTML=loadHistory().slice(0,3).map((h,i)=>`<button class="history-row" data-history-index="${i}"><span>${h.location?.name??h.municipalityId}<small>${h.date} · ${h.mode}</small></span><b>${Number.isFinite(h.score)?h.score+'/100':'—'}</b></button>`).join('') || '<div class="empty">Sin consultas guardadas.</div>'; }
 function renderFavorites(){ $('favorite-list').innerHTML=loadFavorites().map(f=>`<button class="history-row" data-favorite-id="${f.id}"><span>${f.name}<small>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</small></span><b>→</b></button>`).join('') || '<div class="empty">Sin favoritos.</div>'; }
 function openFavoriteDialog(){ const name=prompt('Nombre de la localización'); if(!name)return; const category=prompt('Categoría (paisaje, costa, naturaleza, arquitectura, nocturna)')??''; const notes=prompt('Notas')??''; saveFavorite({name,latitude:state.location.latitude,longitude:state.location.longitude,category,notes}); renderFavorites(); toast('Favorito guardado'); }
 function toast(text){ $('toast').textContent=text; $('toast').classList.add('show'); setTimeout(()=>$('toast').classList.remove('show'),2200); }

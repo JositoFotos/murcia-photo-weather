@@ -8,7 +8,7 @@ function writeJson(key, value) { localStorage.setItem(key, JSON.stringify(value)
 export function saveHistory(entry) {
   const history = readJson(HISTORY_KEY, []);
   history.unshift({ ...entry, timestamp: new Date().toISOString() });
-  writeJson(HISTORY_KEY, history.slice(0, 50));
+  writeJson(HISTORY_KEY, history.slice(0, 3));
 }
 export function loadHistory() { return readJson(HISTORY_KEY, []); }
 export function deleteHistory(index) { const h = loadHistory(); h.splice(index,1); writeJson(HISTORY_KEY,h); }

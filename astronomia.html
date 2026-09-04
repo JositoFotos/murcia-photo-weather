@@ -18,14 +18,16 @@
     <label>Latitud<input id="astro-lat" type="number" step="0.00001" value="37.983" aria-label="Latitud"></label>
     <label>Longitud<input id="astro-lon" type="number" step="0.00001" value="-1.129" aria-label="Longitud"></label>
     <label>Fecha<input id="astro-date" type="date" aria-label="Fecha astronómica"></label>
-    <button id="astro-update" class="primary">Actualizar</button>
+    <button id="astro-update" type="button" class="primary">Actualizar</button>
   </section>
-  <section class="astro-hero">
-    <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Astronomía</span><h2>🌙 Luna</h2></div></div><div id="moon-info" class="astro-panel"></div></article>
-    <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Fotografía nocturna</span><h2>🌌 Vía Láctea</h2></div></div><div id="milky-way-info" class="astro-panel"></div></article>
+  <section class="astro-content">
+      <section class="astro-hero">
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Astronomía</span><h2>🌙 Luna</h2></div></div><div id="moon-info" class="astro-panel"></div></article>
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Fotografía nocturna</span><h2>🌌 Vía Láctea</h2></div></div><div id="milky-way-info" class="astro-panel"></div></article>
+      </section>
+      <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list"></div></section>
+      <section class="card astro-back"><strong>📸 ¿Quieres comprobar el tiempo?</strong><p class="astro-page-note">Vuelve a Fotografía para consultar AEMET, nubosidad, viento, lluvia y ventanas de luz manteniendo la misma localización y fecha.</p><a id="back-photo" href="index.html">← Volver a Fotografía</a></section>
   </section>
-  <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list"></div></section>
-  <section class="card astro-back"><strong>📸 ¿Quieres comprobar el tiempo?</strong><p class="astro-page-note">Vuelve a Fotografía para consultar AEMET, nubosidad, viento, lluvia y ventanas de luz manteniendo la misma localización y fecha.</p><a id="back-photo" href="index.html">← Volver a Fotografía</a></section>
 </main>
 <footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="astro-status">Calculando…</span></footer>
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
