@@ -15,8 +15,8 @@ function cloudinessScoreForMode(data, mode='landscape') {
   // Para amanecer/atardecer y costa buscamos una cantidad intermedia de nubes:
   // suficiente para textura y color, pero evitando un cielo completamente cubierto.
   if (mode === 'sunriseSunset' || mode === 'coast') {
-    const desired = mode === 'coast' ? 50 : 55;
-    return clamp(100 - Math.abs(avg - desired) / 55 * 100);
+    const desired = mode === 'sunriseSunset' ? 60 : 50;
+    return clamp(100 - Math.abs(avg - desired) / 70 * 100);
   }
 
   // Para nocturna importa especialmente cómo entra la noche. El último tramo
@@ -32,7 +32,8 @@ function cloudinessScoreForMode(data, mode='landscape') {
 
   // En paisaje/naturaleza/arquitectura una cantidad moderada aporta textura,
   // pero el beneficio es menor que en amanecer/atardecer y costa.
-  return positiveCloudiness(avg, mode === 'nature' ? 40 : 30);
+  const desired = mode === 'nature' ? 45 : (mode === 'architecture' ? 45 : 40);
+  return positiveCloudiness(avg, desired);
 }
 
 function skyComponents(hourly) {
@@ -63,7 +64,7 @@ export function calculatePhotographyScore(data, mode='landscape') {
     // La nubosidad total de OpenWeather complementa el estado del cielo de AEMET.
     // Le damos una influencia visible, pero limitada, para no dominar al resto
     // de factores del índice.
-    const influence = mode === 'nocturnal' ? 0.18 : (mode === 'sunriseSunset' || mode === 'coast' ? 0.14 : 0.08);
+    const influence = mode === 'nocturnal' ? 0.18 : 0.12;
     adjusted = raw * (1 - influence) + cloudiness * influence;
   }
   const score = Math.round(clamp(adjusted));
@@ -75,8 +76,9 @@ export function calculatePhotographyScore(data, mode='landscape') {
   if (storms >= 80) positives.push('Baja probabilidad de tormentas');
   if (midCloud >= 70 && (mode === 'sunriseSunset' || mode === 'landscape')) positives.push('Nubosidad media útil para textura de cielo');
   if (Number.isFinite(cloudiness)) {
+    if (['landscape','sunriseSunset','coast','nature','architecture'].includes(mode) && cloudiness >= 35 && cloudiness <= 75) positives.push('Nubosidad favorable para textura y volumen');
     if ((mode === 'sunriseSunset' || mode === 'coast') && cloudiness >= 70) positives.push('Nubosidad favorable para textura y color');
-    if ((mode === 'sunriseSunset' || mode === 'coast') && cloudiness < 30) positives.push('Cielo parcialmente despejado');
+    if ((mode === 'sunriseSunset' || mode === 'coast') && cloudiness < 20) positives.push('Cielo parcialmente despejado');
     if (mode === 'nocturnal' && cloudiness >= 75) negatives.push('Nubosidad elevada al inicio de la noche');
     if (mode === 'nocturnal' && cloudiness <= 25) positives.push('Nubosidad baja al inicio de la noche');
   }

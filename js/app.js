@@ -27,7 +27,7 @@ function bindUI(){
   $('search-input').addEventListener('keydown', e=>{ if(e.key==='Enter'){ const first=document.querySelector('.suggestion'); if(first) first.click(); }});
   $('use-location').addEventListener('click', getUserLocation);
   $('refresh').addEventListener('click', ()=>refreshWeather(true));
-  $('date-picker').addEventListener('change', e=>{ if(e.target.value){ state.date=e.target.value; renderDateTabs(state.weather?sortForecastDates(state.weather):[state.date]); if(state.weather) refreshDashboard(); } });
+  $('date-picker').addEventListener('change', async e=>{ if(e.target.value){ state.date=e.target.value; renderDateTabs(state.weather?sortForecastDates(state.weather):[state.date]); if(state.weather){ refreshDashboard(); await refreshOpenWeather(false); } } });
   $('explore').addEventListener('click', doExplore);
   $('share').addEventListener('click', async()=>{ try { const url=generateShareUrl(state.location,state.date); await copyText(url); toast('URL compartible copiada'); } catch { toast('No se pudo copiar la URL; puedes usarla desde el navegador.'); } });
   $('copy-summary').addEventListener('click', async()=>{ try { await copySummary(snapshot(), copyText); toast('Resumen copiado'); } catch { toast('No se pudo copiar el resumen.'); } });
@@ -62,7 +62,7 @@ async function refreshWeather(force=false){
   }
 }
 
-function renderDateTabs(dates){ const valid=(dates||[]).filter(Boolean); const picker=$('date-picker'); picker.value=state.date; picker.disabled=false; picker.min=valid[0]??''; picker.max=valid.at(-1)??''; $('date-tabs').innerHTML=''; valid.forEach((d,i)=>{ const b=document.createElement('button'); b.className='date-tab'; b.classList.toggle('active',d===state.date); b.textContent=i===0?'Hoy':i===1?'Mañana':`+${i}`; b.title=d; b.addEventListener('click',()=>{ state.date=d; picker.value=d; renderDateTabs(valid); picker.blur(); refreshDashboard(); }); $('date-tabs').appendChild(b); }); if(!valid.length){ const b=document.createElement('span'); b.className='date-empty'; b.textContent='Sin fechas de AEMET'; $('date-tabs').appendChild(b); } }
+function renderDateTabs(dates){ const valid=(dates||[]).filter(Boolean); const picker=$('date-picker'); picker.value=state.date; picker.disabled=false; picker.min=valid[0]??''; picker.max=valid.at(-1)??''; $('date-tabs').innerHTML=''; valid.forEach((d,i)=>{ const b=document.createElement('button'); b.className='date-tab'; b.classList.toggle('active',d===state.date); b.textContent=i===0?'Hoy':i===1?'Mañana':`+${i}`; b.title=d; b.addEventListener('click',async()=>{ state.date=d; picker.value=d; renderDateTabs(valid); picker.blur(); refreshDashboard(); await refreshOpenWeather(false); }); $('date-tabs').appendChild(b); }); if(!valid.length){ const b=document.createElement('span'); b.className='date-empty'; b.textContent='Sin fechas de AEMET'; $('date-tabs').appendChild(b); } }
 
 function aggregateForScore(){
   const hourly=getHourlyForDate(state.weather,state.date); const s=summarizeWeather(state.weather,state.date);
@@ -177,29 +177,6 @@ function renderOpenWeather(){
   </article>`).join('');
 
   el.innerHTML=`<div class="openweather-slots" aria-label="Previsión de OpenWeather por intervalos de 3 horas">${cards}</div>`;
-}
-
-function renderSkyConditions(hourly){
-  const el=$('sky-conditions');
-  if(!el) return;
-  const info=summarizeSkyConditions(hourly);
-  if(!info.available){
-    el.innerHTML='<div class="empty">AEMET no proporciona un estado del cielo horario utilizable para esta fecha.</div>';
-    return;
-  }
-  const sequence=info.sequence.map(item=>`<div class="sky-hour" title="${item.description ?? item.label}"><span>${String(item.hour).padStart(2,'0')}h</span><strong>${item.icon}</strong><small>${item.label}</small></div>`).join('');
-  el.innerHTML=`
-    <div class="sky-summary">
-      <div class="sky-main"><span class="sky-icon">${info.dominantIcon}</span><div><span class="sky-kicker">Predominio del cielo</span><strong>${info.dominant}</strong></div></div>
-      <div class="sky-interest"><span>Interés fotográfico del cielo</span><b>${info.photoInterest}</b></div>
-    </div>
-    <div class="sky-badges">
-      <span class="sky-badge">☁️ Estado del cielo: AEMET</span>
-      ${info.hasHighCloud?'<span class="sky-badge accent">🌥️ Nubes altas detectadas</span>':''}
-      ${info.hasPartlyCloudy?'<span class="sky-badge accent">⛅ Nubosidad variable</span>':''}
-    </div>
-    <div class="sky-timeline">${sequence}</div>
-    <p class="sky-note">El servicio municipal de AEMET proporciona <strong>estado del cielo</strong>; no se muestran porcentajes separados de nube baja, media y alta porque este dato no está disponible en este endpoint.</p>`;
 }
 
 function renderMeteogram(){

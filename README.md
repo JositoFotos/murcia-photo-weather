@@ -415,8 +415,3 @@ La utilidad del programa está precisamente en **combinar todas estas piezas en 
 ## Estado del proyecto
 
 Murcia Photo Weather Planner es un proyecto en evolución. Se irán incorporando mejoras y nuevas fuentes o cálculos astronómicos cuando aporten información útil y fiable para la planificación fotográfica en la Región de Murcia.
-
-
-## Radar meteorológico
-
-La aplicación incorpora una página independiente `radar.html` para consultar el radar regional de Murcia (Murcia–Fortuna) de AEMET. El radar se obtiene mediante una Netlify Function para mantener la API Key fuera del navegador. AEMET documenta el recurso regional con el código de radar `mu` y señala que las imágenes regionales cubren una zona definida por un círculo de 240 km de radio alrededor del radar. La imagen es un producto de observación de reflectividad, no una previsión.
