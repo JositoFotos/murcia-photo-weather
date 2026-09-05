@@ -52,7 +52,7 @@ export function renderOpportunities(items, onClick) {
     const c = item.score>=80?'#31c48d':item.score>=65?'#4da3ff':item.score>=50?'#eab308':item.score>=30?'#f97316':'#ef4444';
     L.circleMarker([item.location.latitude,item.location.longitude], { radius:10, color:c, fillColor:c, fillOpacity:.9, weight:2 })
       .bindPopup(`<strong>${item.location.name}</strong><br>${item.score}/100<br><button data-location-id="${item.location.id}" class="map-details">Ver detalles</button>`)
-      .on('popupopen', () => document.querySelector(`[data-location-id="${item.location.id}"]`)?.addEventListener('click', () => onClick(item.location)))
+      .on('popupopen', () => document.querySelector(`[data-location-id="${item.location.id}"]`)?.addEventListener('click', () => onClick(item)))
       .addTo(opportunityLayer);
   });
 }

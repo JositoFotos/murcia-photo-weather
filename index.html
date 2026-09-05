@@ -7,6 +7,9 @@
   <title>Murcia Photo Weather Planner</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -20,7 +23,7 @@
     <article class="card score-card"><div class="card-head"><div><span class="section-kicker">Índice fotográfico</span><div id="score" class="score">—</div><div id="score-label" class="score-label">SIN DATOS</div></div><div class="score-ring" aria-hidden="true"></div></div><div id="indice-grid" class="index-grid"></div><div class="factor-columns"><div><h3>Factores positivos</h3><ul id="positives"></ul></div><div><h3>Factores a vigilar</h3><ul id="negatives"></ul></div></div><div class="recommendation"><span>Recomendación</span><p id="recommendation">—</p></div></article>
   </section>
 
-  <section class="grid-2"><article class="card"><div class="card-head"><div><span class="section-kicker">Luz</span><h2>Sol y crepúsculos</h2></div></div><div class="sun-stats"><div><span>Amanecer</span><strong id="sunrise">N/D</strong></div><div><span>Hora dorada AM</span><strong id="golden-morning">N/D</strong></div><div><span>Hora azul AM</span><strong id="blue-morning">N/D</strong></div><div><span>Mediodía solar</span><strong id="day-length">N/D</strong></div><div><span>Hora dorada PM</span><strong id="golden-evening">N/D</strong></div><div><span>Hora azul PM</span><strong id="blue-evening">N/D</strong></div><div><span>Atardecer</span><strong id="sunset">N/D</strong></div></div></article>
+  <section class="grid-2"><article class="card"><div class="card-head"><div><span class="section-kicker">Luz</span><h2>Sol y crepúsculos</h2></div><span class="source-tag">24 h</span></div><div id="sun-timeline" class="sun-timeline" aria-label="Línea de tiempo solar de 24 horas"></div><div class="sun-summary-row"><span>Amanecer <strong id="sunrise">N/D</strong></span><span>Atardecer <strong id="sunset">N/D</strong></span><span>Día <strong id="day-length">N/D</strong></span></div></article>
   <article class="card"><div class="card-head"><div><span class="section-kicker">Meteorología</span><h2>Condiciones</h2></div></div><div class="weather-grid"><div><span>Temperatura</span><strong id="temperature">N/D</strong><small id="temp-range">N/D</small></div><div><span>Prob. lluvia</span><strong id="rain-prob">N/D</strong></div><div><span>Viento</span><strong id="wind">N/D</strong></div><div><span>Tormentas</span><strong id="storm">N/D</strong></div><div><span>Humedad</span><strong id="humidity">N/D</strong></div></div></article>
   <article class="card openweather-card full-width"><div class="card-head"><div><span class="section-kicker">Datos complementarios</span><h2>OpenWeather</h2></div><span class="source-tag">Previsión 3 h</span></div><div id="openweather-info" class="openweather-info"><div class="empty">Cargando datos complementarios…</div></div><p class="openweather-note">Datos complementarios de OpenWeather; AEMET continúa siendo la fuente meteorológica principal.</p></article></section>
 

@@ -16,6 +16,7 @@ const state = { location:{...MUNICIPALITIES.find(x=>x.id==='30030')}, municipali
 const $ = id => document.getElementById(id);
 
 function setStatus(kind,message) { const el=$('app-status'); el.dataset.state=kind; el.textContent=message; }
+function setLoadingState(isLoading){ document.body.classList.toggle('is-loading', isLoading); }
 function fmt(v,suffix=''){ return Number.isFinite(Number(v)) ? `${Math.round(Number(v)*10)/10}${suffix}` : 'N/D'; }
 function localDateISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function dateLabel(d){ return new Intl.DateTimeFormat('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'}).format(new Date(`${d}T12:00:00`)); }
@@ -46,9 +47,10 @@ async function selectMunicipality(m){ if(!m) return; state.municipality=m; state
 async function selectCoordinate(lat,lon,label='Coordenadas',load=true){ const m=nearestMunicipality(lat,lon); state.location={ id:`coord-${lat}-${lon}`, name:label, latitude:lat, longitude:lon, municipalityId:m?.id ?? null }; state.municipality=m; setLocation(lat,lon,{label}); if(load) await refreshWeather(); }
 
 async function refreshWeather(force=false){
-  if(!state.municipality){ setStatus('error','No se ha podido determinar un municipio de referencia para AEMET.'); return; }
-  setStatus('loading','Cargando predicción de AEMET…');
+  setLoadingState(true);
   try {
+    if(!state.municipality){ throw new Error('No se ha podido determinar un municipio de referencia para AEMET.'); }
+    setStatus('loading','Cargando predicción de AEMET…');
     let normalized=force?null:loadWeatherCache(state.municipality.id,CONFIG.CACHE_DURATION);
     if(!normalized){ const raw=await getWeatherData(state.municipality.id); normalized=processAemetData(raw,state.municipality); saveWeatherCache(state.municipality.id,normalized); }
     state.weather=normalized;
@@ -59,6 +61,8 @@ async function refreshWeather(force=false){
     setStatus('ready',`Datos cargados · ${new Date(normalized.updatedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
   } catch(error){
     state.weather=null; renderEmpty(error.message); renderDateTabs([state.date]); const help=$('aemet-help'); help.hidden=false; help.textContent=error.code==='API_KEY_MISSING'?'AEMET no está configurado. Edita js/config.js y sustituye MI_API_KEY por tu clave de AEMET OpenData.':`AEMET: ${error.message}`; setStatus('error',help.textContent);
+  } finally {
+    setLoadingState(false);
   }
 }
 
@@ -69,12 +73,46 @@ function aggregateForScore(){
   return { rain: Math.max(...hourly.map(x=>x.precipitation).filter(Number.isFinite),NaN), rainProbability:s.rainProbability, stormProbability:s.stormProbability, wind:s.wind.mean, temperature:(s.temperature.max+s.temperature.min)/2, humidity:s.humidity.mean, hourly, openWeatherPoints: state.openWeather ? getOpenWeatherForDate(state.openWeather,state.date) : [] };
 }
 
+function renderSunTimeline(){
+  const el = $('sun-timeline');
+  const t = state.astronomy;
+  if(!el || !t) return;
+  const valid = value => value instanceof Date && !Number.isNaN(value.getTime());
+  const start = new Date(`${state.date}T00:00:00`);
+  const end = new Date(start.getTime() + 24*60*60*1000);
+  const pct = d => Math.max(0, Math.min(100, ((d.getTime()-start.getTime())/(end.getTime()-start.getTime()))*100));
+  const segment = (cls, a, b) => valid(a) && valid(b) && b > a ? `<div class="sun-segment ${cls}" style="left:${pct(a)}%;width:${pct(b)-pct(a)}%"></div>` : '';
+  const marker = (cls,label,d) => valid(d) ? `<div class="sun-marker ${cls}" style="left:${pct(d)}%"><span>${label} ${formatTime(d, CONFIG.DEFAULT_TIME_ZONE)}</span></div>` : '';
+  const goldenMorning = t.goldenMorning || [];
+  const goldenEvening = t.goldenEvening || [];
+  const blueMorning = t.blueMorning || [];
+  const blueEvening = t.blueEvening || [];
+  el.innerHTML = `
+    <div class="sun-timeline-track">
+      <div class="sun-segment night" style="left:0%;width:100%"></div>
+      ${segment('day', t.sunrise, t.sunset)}
+      ${segment('blue', blueMorning[0], blueMorning[1])}
+      ${segment('blue', blueEvening[0], blueEvening[1])}
+      ${segment('golden', goldenMorning[0], goldenMorning[1])}
+      ${segment('golden', goldenEvening[0], goldenEvening[1])}
+      ${marker('', 'Amanecer', t.sunrise)}
+      ${marker('', 'Atardecer', t.sunset)}
+    </div>
+    <div class="sun-timeline-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="sun-timeline-legend">
+      <span><i class="legend-swatch night"></i>Noche</span>
+      <span><i class="legend-swatch day"></i>Día</span>
+      <span><i class="legend-swatch golden"></i>Hora dorada</span>
+      <span><i class="legend-swatch blue"></i>Hora azul</span>
+    </div>`;
+}
+
 function refreshDashboard(){
   if(!state.weather){ renderEmpty('Sin datos meteorológicos todavía. Configura AEMET y pulsa Actualizar.'); return; }
   $('aemet-help').hidden=true;
-  const date=state.date; const location=state.location; const summary=summarizeWeather(state.weather,date); state.astronomy=calculateSunTimes(date,location.latitude,location.longitude); const score=calculatePhotographyScore(aggregateForScore(), state.mode==='sunriseSunset'?'sunriseSunset':state.mode); state.currentScore=score; const indices=calculateSpecificIndices(aggregateForScore());
+  const date=state.date; const location=state.location; const summary=summarizeWeather(state.weather,date); state.astronomy=calculateSunTimes(date,location.latitude,location.longitude); renderSunTimeline(); const score=calculatePhotographyScore(aggregateForScore(), state.mode==='sunriseSunset'?'sunriseSunset':state.mode); state.currentScore=score; const indices=calculateSpecificIndices(aggregateForScore());
   $('location-name').textContent=location.name; $('coordinates').textContent=`${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`; $('municipality').textContent=state.municipality?.name ?? '—'; $('score').textContent=`${score.score}/100`; $('score-label').textContent=score.category.toUpperCase(); $('temperature').textContent=`${fmt(summary.temperature.current ?? summary.temperature.max,' °C')}`; $('temp-range').textContent=`${fmt(summary.temperature.min,' °C')} – ${fmt(summary.temperature.max,' °C')}`; $('rain-prob').textContent=fmt(summary.rainProbability,' %'); $('wind').textContent=fmt(summary.wind.mean,' km/h'); $('storm').textContent=conditionLabel(summary.stormProbability); $('humidity').textContent=fmt(summary.humidity.mean,' %');
-  $('sunrise').textContent=formatTime(state.astronomy.sunrise); $('sunset').textContent=formatTime(state.astronomy.sunset); $('golden-morning').textContent=formatRange(state.astronomy.goldenMorning,CONFIG.DEFAULT_TIME_ZONE); $('golden-evening').textContent=formatRange(state.astronomy.goldenEvening,CONFIG.DEFAULT_TIME_ZONE); $('blue-morning').textContent=formatRange(state.astronomy.blueMorning,CONFIG.DEFAULT_TIME_ZONE); $('blue-evening').textContent=formatRange(state.astronomy.blueEvening,CONFIG.DEFAULT_TIME_ZONE); $('day-length').textContent=state.astronomy.dayLengthMs ? `${Math.floor(state.astronomy.dayLengthMs/3600000)}h ${Math.round((state.astronomy.dayLengthMs%3600000)/60000)}m` : 'N/D';
+  $('sunrise').textContent=formatTime(state.astronomy.sunrise); $('sunset').textContent=formatTime(state.astronomy.sunset); $('day-length').textContent=state.astronomy.dayLengthMs ? `${Math.floor(state.astronomy.dayLengthMs/3600000)}h ${Math.round((state.astronomy.dayLengthMs%3600000)/60000)}m` : 'N/D';
   $('indice-grid').innerHTML=[['🌅 Amanecer',indices.sunrise],['☀️ Día',indices.day],['🌇 Atardecer',indices.sunset],['🌌 Noche',indices.night]].map(([l,v])=>`<div class="index-mini"><span>${l}</span><strong>${v}/100</strong></div>`).join('');
   state.moon=getMoonData(date,location.latitude,location.longitude,CONFIG.DEFAULT_TIME_ZONE);
   state.milkyWay=calculateMilkyWay(date,location.latitude,location.longitude,state.astronomy,state.moon);
@@ -257,7 +295,7 @@ function renderMeteogram(){
   });
 }
 
-function renderEmpty(message){ $('location-name').textContent=state.location.name; if($('moon-info')) $('moon-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('milky-way-info')) $('milky-way-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('astro-events')) $('astro-events').innerHTML='<div class="empty">Sin datos astronómicos.</div>';  ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','golden-morning','golden-evening','blue-morning','blue-evening','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS';  $('positives').innerHTML=''; $('negatives').innerHTML=''; }
+function renderEmpty(message){ $('location-name').textContent=state.location.name; if($('moon-info')) $('moon-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('milky-way-info')) $('milky-way-info').innerHTML='<div class="empty">Sin datos astronómicos.</div>'; if($('astro-events')) $('astro-events').innerHTML='<div class="empty">Sin datos astronómicos.</div>';  ['temperature','rain-prob','wind','storm','humidity','sunrise','sunset','day-length'].forEach(id=>$(id).textContent='N/D'); $('score').textContent='—'; $('score-label').textContent='SIN DATOS';  $('positives').innerHTML=''; $('negatives').innerHTML=''; }
 
 async function getUserLocation(){ if(!navigator.geolocation){ toast('Geolocalización no disponible'); return; } navigator.geolocation.getCurrentPosition(p=>selectCoordinate(p.coords.latitude,p.coords.longitude,'Mi ubicación'),()=>toast('Permiso de ubicación denegado o no disponible'),{enableHighAccuracy:true,timeout:10000,maximumAge:300000}); }
 
@@ -293,8 +331,46 @@ function updateAstronomyLink(){
 }
 
 function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.location.id,x.score])); renderPhotoLocations(PHOTO_LOCATIONS,scoreMap); renderOpportunitiesMap(ranked); }
-function renderOpportunitiesMap(ranked){ renderOpportunityMarkers(ranked.map(x=>({location:x.location,score:x.score})),loc=>selectCoordinate(loc.latitude,loc.longitude,loc.name)); }
-async function getWeatherForMunicipality(m){ const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION); if(cached)return cached; const normalized=processAemetData(await getWeatherData(m.id),m); saveWeatherCache(m.id,normalized); return normalized; }
+function renderOpportunitiesMap(ranked){
+  renderOpportunityMarkers(ranked, item => selectOpportunityResult(item));
+}
+async function selectOpportunityResult(item){
+  if(!item?.location) return;
+  const municipality=getMunicipalityById(item.location.municipalityId);
+  state.location={ id:item.location.id, name:item.location.name, latitude:item.location.latitude, longitude:item.location.longitude, municipalityId:municipality?.id ?? null };
+  state.municipality=municipality;
+  state.weather=item.weather ?? null;
+  setLocation(item.location.latitude,item.location.longitude,{label:item.location.name});
+  if(state.weather){
+    const dates=sortForecastDates(state.weather);
+    if(dates.includes(state.date)){
+      renderDateTabs(dates);
+    } else if(dates.length){
+      state.date=dates[0];
+      renderDateTabs(dates);
+    }
+    refreshDashboard();
+    await refreshOpenWeather(false);
+    saveHistory({ municipalityId:state.municipality?.id ?? null, location:state.location, date:state.date, mode:state.mode, score:state.currentScore?.score ?? null });
+    return;
+  }
+  await selectCoordinate(item.location.latitude,item.location.longitude,item.location.name);
+}
+async function getWeatherForMunicipality(m){
+  const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION);
+  if(cached)return cached;
+  try {
+    const normalized=processAemetData(await getWeatherData(m.id),m);
+    saveWeatherCache(m.id,normalized);
+    return normalized;
+  } catch(error){
+    if(error?.status===429){
+      const stale=loadWeatherCache(m.id,Infinity);
+      if(stale) return stale;
+    }
+    throw error;
+  }
+}
 
 function snapshot(){ const summary=summarizeWeather(state.weather,state.date); return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, openWeather:state.openWeatherSummary ?? null, astronomy:state.astronomy, moon:state.moon ?? null, milkyWay:state.milkyWay ?? null, astroEvents:state.astroEvents ?? [], indices:calculateSpecificIndices(aggregateForScore()), summary, recommendation:$('recommendation').textContent }; }
 function renderHistory(){ $('history-list').innerHTML=loadHistory().slice(0,3).map((h,i)=>`<button class="history-row" data-history-index="${i}"><span>${h.location?.name??h.municipalityId}<small>${h.date} · ${h.mode}</small></span><b>${Number.isFinite(h.score)?h.score+'/100':'—'}</b></button>`).join('') || '<div class="empty">Sin consultas guardadas.</div>'; }

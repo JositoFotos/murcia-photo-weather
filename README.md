@@ -415,3 +415,7 @@ La utilidad del programa está precisamente en **combinar todas estas piezas en 
 ## Estado del proyecto
 
 Murcia Photo Weather Planner es un proyecto en evolución. Se irán incorporando mejoras y nuevas fuentes o cálculos astronómicos cuando aporten información útil y fiable para la planificación fotográfica en la Región de Murcia.
+
+
+### Cartografía
+El mapa admite CARTO Dark Matter como base visual cuando se configura una clave gratuita de basemaps de CARTO; sin esa clave se utiliza OpenStreetMap como respaldo. CARTO exige clave y atribución para sus basemaps actuales.
