@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>Radar meteorológico · Murcia Photo Weather Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .radar-page { display:grid; gap:1rem; }
+    #radar-map { height:min(72vh,720px); min-height:420px; border-radius:16px; overflow:hidden; background:#dfe5e8; }
+    .radar-toolbar { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+    .radar-info { display:grid; grid-template-columns:1.5fr 1fr; gap:1rem; }
+    .radar-note { font-size:.9rem; line-height:1.5; }
+    @media (max-width:800px) { .radar-info { grid-template-columns:1fr; } #radar-map { height:65vh; min-height:380px; } }
+  </style>
+</head>
+<body>
+<header class="topbar"><div><span class="eyebrow">MURCIA · PHOTO WEATHER</span><h1>Radar meteorológico</h1><p>Precipitación observada por el radar regional de AEMET.</p></div><nav class="main-nav" aria-label="Secciones"><a class="nav-link" href="index.html">📸 Fotografía</a><a class="nav-link" href="astronomia.html">🌌 Astronomía</a><a class="nav-link active" href="radar.html">🌧️ Radar</a></nav></header>
+<main class="shell radar-page">
+  <section class="card"><div class="card-head"><div><span class="section-kicker">Radar AEMET</span><h2>Radar regional de Murcia</h2><p class="muted">Imagen de reflectividad del radar regional Murcia–Fortuna.</p></div><div class="radar-toolbar"><button id="radar-refresh" class="primary">↻ Actualizar radar</button><button id="radar-center">⌖ Centrar Murcia</button><span id="radar-status" class="source-tag">Cargando…</span></div></div><div id="radar-map" aria-label="Mapa del radar meteorológico de Murcia"></div></section>
+  <section class="radar-info"><article class="card"><span class="section-kicker">Lectura</span><h2>Reflectividad</h2><p id="radar-legend" class="radar-note">Los ecos del radar representan reflectividad en dBZ; los ecos más intensos suelen corresponder a precipitación más intensa.</p><p class="radar-note"><strong>Consulta:</strong> <span id="radar-updated">N/D</span></p></article><article class="card"><span class="section-kicker">Fuente</span><h2>AEMET</h2><p class="radar-note">El radar muestra precipitación observada, no una predicción futura. La imagen regional tiene una cobertura circular alrededor del radar.</p></article></section>
+</main>
+<footer class="footer"><span>AEMET OpenData + Leaflet</span><span>Radar regional de Murcia</span></footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="https://unpkg.com/leaflet.fullscreen@3.0.0/Control.FullScreen.js"></script><script type="module" src="js/radar.js"></script>
+</body></html>
