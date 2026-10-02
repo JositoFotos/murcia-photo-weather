@@ -6,6 +6,26 @@ function absenceScore(v, badAt=50) { return Number.isFinite(v) ? clamp(100 - (v 
 function moderateScore(v, ideal, tolerance) { return Number.isFinite(v) ? clamp(100 - Math.abs(v - ideal) / tolerance * 100) : 60; }
 function positiveCloudiness(cloud, desired=55) { return Number.isFinite(cloud) ? clamp(100 - Math.abs(cloud - desired) / 55 * 100) : 60; }
 
+function lateNightAdverseConditions(data) {
+  const hourly = Array.isArray(data.hourly) ? data.hourly : [];
+  const lateNight = hourly.filter(row => Number.isInteger(row?.hour) && row.hour >= 21 && row.hour <= 23);
+  if (!lateNight.length) return { penalty: 0, rain: false, storm: false };
+
+  const hasRain = lateNight.some(row =>
+    (Number.isFinite(row?.precipitation) && row.precipitation > 0) ||
+    (Number.isFinite(row?.rainProbability) && row.rainProbability >= 50)
+  );
+  const stormValues = lateNight.map(row => row?.stormProbability).filter(Number.isFinite);
+  const maxStorm = stormValues.length ? Math.max(...stormValues) : null;
+  const hasStorm = Number.isFinite(maxStorm) && maxStorm >= 30;
+
+  let penalty = 0;
+  if (hasRain) penalty += 10;
+  if (hasStorm) penalty += maxStorm >= 60 ? 12 : 8;
+
+  return { penalty: Math.min(20, penalty), rain: hasRain, storm: hasStorm, maxStorm };
+}
+
 function cloudinessScoreForMode(data, mode='landscape') {
   const points = Array.isArray(data.openWeatherPoints) ? data.openWeatherPoints : [];
   const cloud = points.map(p => Number(p.cloudiness)).filter(Number.isFinite);
@@ -67,7 +87,8 @@ export function calculatePhotographyScore(data, mode='landscape') {
     const influence = mode === 'nocturnal' ? 0.18 : 0.12;
     adjusted = raw * (1 - influence) + cloudiness * influence;
   }
-  const score = Math.round(clamp(adjusted));
+  const lateNight = mode === 'nocturnal' ? lateNightAdverseConditions(data) : { penalty: 0, rain: false, storm: false };
+  const score = Math.round(clamp(adjusted - lateNight.penalty));
   const positives = [];
   const negatives = [];
   if (highCloud >= 75) positives.push('Nubosidad alta favorable');
@@ -82,11 +103,13 @@ export function calculatePhotographyScore(data, mode='landscape') {
     if (mode === 'nocturnal' && cloudiness >= 75) negatives.push('Nubosidad elevada al inicio de la noche');
     if (mode === 'nocturnal' && cloudiness <= 25) positives.push('Nubosidad baja al inicio de la noche');
   }
+  if (mode === 'nocturnal' && lateNight.rain) negatives.push('Lluvia prevista en las últimas 3 horas del día');
+  if (mode === 'nocturnal' && lateNight.storm) negatives.push('Tormenta prevista en las últimas 3 horas del día');
   if (lowCloud < 45) negatives.push('Nubosidad baja elevada');
   if (rainProbability < 50) negatives.push('Probabilidad de lluvia significativa');
   if (storms < 50) negatives.push('Riesgo de tormenta elevado');
   if (wind < 45) negatives.push('Viento poco favorable');
-  return { score, category: score >= 81 ? 'Excelente' : score >= 61 ? 'Bueno' : score >= 41 ? 'Aceptable' : score >= 21 ? 'Desfavorable' : 'Muy desfavorable', factors: { ...scores, cloudiness }, positives, negatives };
+  return { score, category: score >= 81 ? 'Excelente' : score >= 61 ? 'Bueno' : score >= 41 ? 'Aceptable' : score >= 21 ? 'Desfavorable' : 'Muy desfavorable', factors: { ...scores, cloudiness, lateNightPenalty: lateNight.penalty }, positives, negatives };
 }
 
 export function calculateSkyPhotographyScore(data, mode='sunriseSunset') {
@@ -124,3 +147,68 @@ function parseForecastDate(row) {
 }
 function inRange(date, range) { return Array.isArray(range) && range[0] && range[1] && date >= range[0] && date <= range[1]; }
 function mergeAdjacentWindows(items) { return items.map(x => ({ start:x.time, end:new Date(x.time.getTime()+60*60*1000), score:x.score, label:x.label })).sort((a,b)=>b.score-a.score); }
+
+
+export function calculateBestPhotographyMoment({ hourly = [], openWeatherPoints = [], astronomy = null, mode = 'landscape', startHour = null, endHour = null } = {}) {
+  const owByHour = new Map((openWeatherPoints || []).filter(p => Number.isInteger(p.hour)).map(p => [p.hour, p]));
+  const toDate = row => {
+    if (!row?.date || !Number.isInteger(row.hour)) return null;
+    const d = new Date(`${row.date}T${String(row.hour).padStart(2,'0')}:00:00+02:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const inSolarRange = (d, range) => Array.isArray(range) && range[0] instanceof Date && range[1] instanceof Date && d >= range[0] && d <= range[1];
+  const candidates = (hourly || []).map(row => {
+    const date = toDate(row);
+    if (!date) return null;
+    const ow = owByHour.get(row.hour);
+    const isGolden = inSolarRange(date, astronomy?.goldenMorning) || inSolarRange(date, astronomy?.goldenEvening);
+    const isBlue = inSolarRange(date, astronomy?.blueMorning) || inSolarRange(date, astronomy?.blueEvening);
+    const isNight = row.hour >= 20 || row.hour <= 5;
+    const isDay = row.hour >= 7 && row.hour < 20;
+    let allowed = true;
+    if (startHour !== null && startHour !== undefined && endHour !== null && endHour !== undefined) {
+      const h = row.hour;
+      allowed = startHour <= endHour ? h >= startHour && h <= endHour : (h >= startHour || h <= endHour);
+    } else if (mode === 'sunriseSunset') {
+      allowed = isGolden || isBlue;
+      if (!allowed) {
+        const hasSpecialWindow = (hourly || []).some(candidate => {
+          if (!candidate?.date || !Number.isInteger(candidate.hour)) return false;
+          const candidateDate = new Date(`${candidate.date}T${String(candidate.hour).padStart(2,'0')}:00:00+02:00`);
+          return inSolarRange(candidateDate, astronomy?.goldenMorning) || inSolarRange(candidateDate, astronomy?.goldenEvening) || inSolarRange(candidateDate, astronomy?.blueMorning) || inSolarRange(candidateDate, astronomy?.blueEvening);
+        });
+        allowed = !hasSpecialWindow && isDay;
+      }
+    } else if (mode === 'nocturnal') {
+      allowed = isNight;
+    } else {
+      allowed = isDay;
+    }
+    if (!allowed) return null;
+    const merged = {
+      ...row,
+      visibility: ow?.visibility ?? null,
+      openWeatherPoints: ow ? [ow] : [],
+      cloudiness: Number.isFinite(ow?.cloudiness) ? ow.cloudiness : null
+    };
+    const scoreData = {
+      rain: row.precipitation,
+      rainProbability: row.rainProbability,
+      stormProbability: row.stormProbability,
+      wind: row.wind?.speed,
+      temperature: row.temperature,
+      humidity: row.humidity,
+      visibility: ow?.visibility ?? null,
+      hourly: [merged],
+      openWeatherPoints: ow ? [ow] : []
+    };
+    const scored = calculatePhotographyScore(scoreData, mode);
+    return { row, date, scoreData, score: scored.score, scored, label: isGolden ? 'Hora dorada' : isBlue ? 'Hora azul' : isNight ? 'Noche' : 'Día', cloudiness: ow?.cloudiness ?? null };
+  }).filter(Boolean);
+  candidates.sort((a,b)=>b.score-a.score);
+  const best=candidates[0] ?? null;
+  if (!best) return null;
+  const timeLabel = best.date.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'});
+  const cloudLabel = Number.isFinite(best.cloudiness) ? `Nubosidad ${Math.round(best.cloudiness)} %` : null;
+  return { ...best, timeLabel, cloudLabel, reason: best.scored.positives?.[0] ?? best.scored.negatives?.[0] ?? 'Condiciones combinadas favorables.' };
+}

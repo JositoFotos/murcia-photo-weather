@@ -2,6 +2,12 @@ import { CONFIG } from './config.js';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+function retryDelay(response, attempt) {
+  const retryAfter = Number(response?.headers?.get?.('Retry-After'));
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.min(retryAfter * 1000, 15000);
+  return Math.min(1200 * (2 ** attempt), 10000);
+}
+
 function assertApiConfigured() {
   const key = String(CONFIG.AEMET_API_KEY ?? '').trim();
   const proxy = String(CONFIG.AEMET_PROXY_URL ?? '').trim();
@@ -29,7 +35,7 @@ function assertApiConfigured() {
 }
 
 
-async function fetchJson(url, { timeoutMs = 20000, retries = 1 } = {}) {
+async function fetchJson(url, { timeoutMs = 20000, retries = 2 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -42,12 +48,15 @@ async function fetchJson(url, { timeoutMs = 20000, retries = 1 } = {}) {
       if (!response.ok) {
         const error = new Error(payload?.descripcion || `HTTP ${response.status}`);
         error.status = response.status;
+        error.retryAfterMs = response.status === 429 ? retryDelay(response, attempt) : null;
         throw error;
       }
       return payload;
     } catch (error) {
       lastError = error.name === 'AbortError' ? new Error('Tiempo de espera agotado al consultar AEMET.') : error;
-      if (attempt < retries) await sleep(600 * (attempt + 1));
+      if (attempt < retries) {
+        await sleep(Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs : 600 * (attempt + 1));
+      }
     } finally { clearTimeout(timeout); }
   }
   throw lastError;

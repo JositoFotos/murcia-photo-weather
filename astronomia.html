@@ -10,7 +10,7 @@
 <body>
 <header class="topbar">
   <div><span class="eyebrow">MURCIA · PHOTO WEATHER</span><h1>Murcia Photo Weather Planner</h1><p>Planificación astronómica para fotografía nocturna.</p></div>
-  <nav class="main-nav" aria-label="Secciones"><a class="nav-link" id="photo-link" href="index.html">📸 Fotografía</a><a class="nav-link active" href="astronomia.html">🌌 Astronomía</a></nav>
+  <nav class="main-nav" aria-label="Secciones"><a class="nav-link" id="photo-link" href="index.html">📸 Fotografía</a><a class="nav-link active" href="astronomia.html">🌌 Astronomía</a><a class="nav-link" id="recommended-link" href="recomendados.html">⭐ Recomendados</a></nav>
 </header>
 <main class="astro-page-shell">
   <section class="card astro-toolbar" aria-label="Contexto de consulta">
@@ -25,8 +25,12 @@
         <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Astronomía</span><h2>🌙 Luna</h2></div></div><div id="moon-info" class="astro-panel"></div></article>
         <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Fotografía nocturna</span><h2>🌌 Vía Láctea</h2></div></div><div id="milky-way-info" class="astro-panel"></div></article>
       </section>
+      <section class="astro-secondary-grid">
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Condiciones nocturnas</span><h2>🌌 Esta noche</h2><p class="muted">Cruce de astronomía y previsión meteorológica para la sesión nocturna.</p></div></div><div id="night-conditions" class="astro-panel"></div></article>
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Calendario lunar</span><h2>🌓 Mes lunar</h2><p class="muted">Fase e iluminación para cada día del mes seleccionado.</p></div></div><div id="lunar-calendar" class="lunar-calendar"></div></article>
+      </section>
       <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list"></div></section>
-      <section class="card astro-back"><strong>📸 ¿Quieres comprobar el tiempo?</strong><p class="astro-page-note">Vuelve a Fotografía para consultar AEMET, nubosidad, viento, lluvia y ventanas de luz manteniendo la misma localización y fecha.</p><a id="back-photo" href="index.html">← Volver a Fotografía</a></section>
+      <section class="card astro-back"><strong>📸 ¿Quieres comprobar el tiempo?</strong><p class="astro-page-note">Vuelve a Fotografía para consultar AEMET, nubosidad, viento, lluvia y ventanas de luz manteniendo la misma localización y fecha.</p><div class="astro-subnav"><a id="back-photo" href="index.html">← Volver a Fotografía</a><a id="back-recommended" href="recomendados.html">⭐ Ver Recomendados</a></div></section>
   </section>
 </main>
 <footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="astro-status">Calculando…</span></footer>

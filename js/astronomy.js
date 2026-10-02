@@ -248,3 +248,55 @@ function galacticCenterAzimuth(date, latitude, longitude) {
   ) * DEG;
   return normalizeDegrees(az + 180);
 }
+
+
+export function calculateLunarCalendar(dateISO, timeZone='Europe/Madrid') {
+  if(!window.SunCalc) throw new Error('SunCalc no está disponible.');
+  const base=new Date(`${dateISO}T12:00:00`);
+  const first=new Date(base.getFullYear(),base.getMonth(),1,12,0,0);
+  const daysInMonth=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
+  return Array.from({length:daysInMonth},(_,index)=>{
+    const day=new Date(first.getTime()+index*86400000);
+    const illumination=window.SunCalc.getMoonIllumination(day);
+    const phase=normalize(illumination.phase);
+    return {
+      date:day,
+      day:index+1,
+      phase,
+      illuminationPercent:Math.round(illumination.fraction*100),
+      waxing:illumination.waxing!==false,
+      icon:moonPhaseIcon(phase),
+      name:moonPhaseName(phase),
+      selected:day.toISOString().slice(0,10)===dateISO,
+      label:new Intl.DateTimeFormat('es-ES',{weekday:'short',timeZone}).format(day)
+    };
+  });
+}
+
+export function calculateNightConditions(dateISO, moonData, openWeatherPoints=[], sunTimes) {
+  const points=(openWeatherPoints||[]).filter(p=>Number.isFinite(p.hour));
+  const evening=points.filter(p=>p.hour>=18 || p.hour<=5);
+  const weighted=evening.length ? evening.reduce((sum,p)=>{ const w=p.hour>=21?2.5:p.hour>=20?1.5:1; return sum+(Number.isFinite(p.cloudiness)?p.cloudiness:0)*w; },0)/evening.reduce((sum,p)=>sum+(p.hour>=21?2.5:p.hour>=20?1.5:1),0) : null;
+  const rain=Math.max(...evening.map(p=>Number.isFinite(p.precipitationProbability)?p.precipitationProbability:NaN).filter(Number.isFinite),NaN);
+  const visibilityValues=evening.map(p=>p.visibility).filter(Number.isFinite);
+  const visibility=visibilityValues.length?visibilityValues.reduce((a,b)=>a+b,0)/visibilityValues.length:null;
+  const cloudScore=Number.isFinite(weighted)?Math.max(0,Math.round(100-weighted)):60;
+  const moonScore=moonData ? (moonData.illuminationPercent<=15?100:moonData.illuminationPercent<=35?78:moonData.illuminationPercent<=60?52:28) : 60;
+  const rainScore=Number.isFinite(rain)?Math.max(0,100-rain):65;
+  const visibilityScore=Number.isFinite(visibility)?Math.min(100,Math.round((visibility/10)*100)):60;
+  const score=Math.round(clampNight(cloudScore*0.45+moonScore*0.25+rainScore*0.15+visibilityScore*0.15));
+  const firstNightPoint=evening.find(p=>p.hour>=20) ?? evening[0] ?? null;
+  return {
+    score,
+    cloudiness:weighted,
+    cloudScore,
+    moonScore,
+    rainProbability:rain,
+    visibility,
+    visibilityScore,
+    bestStart:sunTimes?.night ?? sunTimes?.sunset ?? null,
+    firstNightHour:firstNightPoint?.hour ?? null
+  };
+}
+
+function clampNight(value){return Math.min(100,Math.max(0,Number(value)||0));}

@@ -7,6 +7,7 @@ export const CONFIG = {
   CACHE_DURATION: 15 * 60 * 1000,
   DEFAULT_MAP_CENTER: [37.75, -1.15],
   DEFAULT_ZOOM: 9,
+  RECOMMENDED_MAX_RESULTS: 12,
   DEFAULT_TIME_ZONE: 'Europe/Madrid',
   // La clave se guarda como secreto OPENWEATHER_API en Netlify; nunca se publica aquí.
   OPENWEATHER_PROXY_URL: 'https://murcia-photo-weather.netlify.app/.netlify/functions/openweather',

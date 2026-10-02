@@ -1,95 +1,67 @@
-import { calculateSunTimes, formatTime, getMoonData, calculateMilkyWay, calculateAstronomicalEvents } from './astronomy.js';
-import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
-import { getWeatherData, processAemetData } from './aemet.js';
-import { getMunicipalityById } from './locations.js';
-import { exploreMurcia } from './opportunities.js';
-import { loadWeatherCache, saveWeatherCache } from './storage.js';
+import { calculateSunTimes, formatTime, getMoonData, calculateMilkyWay, calculateAstronomicalEvents, calculateLunarCalendar, calculateNightConditions } from './astronomy.js';
+import { getOpenWeatherForecast, getOpenWeatherForDate } from './openweather.js';
 import { CONFIG } from './config.js';
 
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
+const localDateISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const params=new URLSearchParams(location.search);
+const state={
+  lat:Number(params.get('lat'))||37.983,
+  lon:Number(params.get('lon'))||-1.129,
+  name:params.get('name')||'Murcia',
+  date:params.get('date')||localDateISO(),
+  mode:params.get('mode')||'landscape',
+  moon:null,milkyWay:null,events:[],sun:null,openWeather:null,night:null
+};
 
-function localDateISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-function paramsState(){const p=new URLSearchParams(location.search);return {lat:Number(p.get('lat')),lon:Number(p.get('lon')),date:p.get('date')||localDateISO(),name:p.get('name')||'Ubicación seleccionada',mode:p.get('mode')||'landscape'};}
-function fmtTime(v){return v?formatTime(v):'N/D'}
-function currentMode(){ return new URLSearchParams(location.search).get('mode') || 'landscape'; }
 function updateLinks(){
-  const lat=Number($('astro-lat').value),lon=Number($('astro-lon').value),date=$('astro-date').value,name=$('astro-location').value||'Ubicación astronómica',mode=currentMode();
-  const params=new URLSearchParams({lat:String(lat),lon:String(lon),date,name,mode});
-  const q=`?${params.toString()}`;
-  $('photo-link').href=`index.html${q}`;
-  $('back-photo').href=`index.html${q}`;
+  const q=new URLSearchParams({lat:String(state.lat),lon:String(state.lon),date:state.date,name:state.name,mode:state.mode});
+  $('photo-link').href=`index.html?${q}`;
+  $('back-photo').href=`index.html?${q}`;
+  $('back-recommended').href=`recomendados.html?${q}`;
+  $('recommended-link').href=`recomendados.html?${q}`;
 }
 
 function render(){
-  const lat=Number($('astro-lat').value),lon=Number($('astro-lon').value),date=$('astro-date').value;
-  if(!Number.isFinite(lat)||!Number.isFinite(lon)||!date){$('astro-status').textContent='Faltan datos';return;}
-  const sun=calculateSunTimes(date,lat,lon);
-  const moon=getMoonData(date,lat,lon);
-  const mw=calculateMilkyWay(date,lat,lon,sun,moon);
-  const events=calculateAstronomicalEvents(date,lat,lon,CONFIG.DEFAULT_TIME_ZONE);
-  $('moon-info').innerHTML=`<div class="astro-main"><span class="astro-icon moon">${moon.icon}</span><div><span class="astro-kicker">Fase lunar</span><strong>${moon.name}</strong><span class="astro-muted">${moon.illuminationPercent}% iluminada · ${moon.waxing?'creciente':'menguante'}</span></div></div><div class="astro-stats"><div><span>Salida</span><strong>${fmtTime(moon.rise)}${moon.riseDateLabel ? ` <small>${moon.riseDateLabel}</small>` : ''}</strong></div><div><span>Puesta</span><strong>${fmtTime(moon.set)}${moon.setDateLabel ? ` <small>${moon.setDateLabel}</small>` : ''}</strong></div><div><span>Distancia</span><strong>${Number.isFinite(moon.distance)?Math.round(moon.distance).toLocaleString('es-ES')+' km':'N/D'}</strong></div><div><span>Altura · 12h</span><strong>${Number.isFinite(moon.altitude)?Math.round(moon.altitude*180/Math.PI)+'°':'N/D'}</strong></div></div>`;
-  $('milky-way-info').innerHTML=`<div class="astro-main"><span class="astro-icon">🌌</span><div><span class="astro-kicker">Visibilidad fotográfica</span><strong>${mw.score}/100</strong><span class="astro-muted">${mw.label || (mw.score>=80?'Excelente':mw.score>=60?'Favorable':mw.score>=40?'Moderada':'Limitada')}</span></div></div><div class="astro-stats"><div><span>Ventana</span><strong>${mw.start&&mw.end?fmtTime(mw.start)+'–'+fmtTime(mw.end):'N/D'}</strong></div><div><span>Máxima altura</span><strong>${Number.isFinite(mw.bestAltitude)?Math.round(mw.bestAltitude)+'°':'N/D'}</strong></div><div><span>Mejor momento</span><strong>${fmtTime(mw.bestTime)}</strong></div><div><span>Azimut aprox.</span><strong>${Number.isFinite(mw.centerAzimuth)?Math.round(mw.centerAzimuth)+'°':'N/D'}</strong></div></div><p class="astro-note">Estimación astronómica para fotografía nocturna; la nubosidad real debe comprobarse en la página de Fotografía.</p>`;
-  $('astro-events').innerHTML=events.length?events.map(e=>`<article class="astro-event"><strong>${e.icon||'🔭'} ${e.title}</strong><span>${e.detail||e.description||''}</span></article>`).join(''):'<div class="empty">No hay eventos destacados calculados para esta fecha.</div>';
+  state.sun=calculateSunTimes(state.date,state.lat,state.lon);
+  state.moon=getMoonData(state.date,state.lat,state.lon,CONFIG.DEFAULT_TIME_ZONE);
+  state.milkyWay=calculateMilkyWay(state.date,state.lat,state.lon,state.sun,state.moon);
+  state.events=calculateAstronomicalEvents(state.date,state.lat,state.lon,CONFIG.DEFAULT_TIME_ZONE);
+  const owPoints=getOpenWeatherForDate(state.openWeather,state.date);
+  state.night=calculateNightConditions(state.date,state.moon,owPoints,state.sun);
+
+  const m=state.moon;
+  $('astro-location').value=state.name;$('astro-lat').value=state.lat;$('astro-lon').value=state.lon;$('astro-date').value=state.date;
+  $('moon-info').innerHTML=`<div class="astro-main"><span class="astro-icon moon">${m.icon}</span><div><span class="astro-kicker">Fase lunar</span><strong>${m.name}</strong><span class="astro-muted">${m.illuminationPercent}% iluminada · ${m.waxing?'creciente':'menguante'}</span></div></div><div class="astro-stats"><div><span>Salida</span><strong>${m.rise?formatTime(m.rise,CONFIG.DEFAULT_TIME_ZONE):'N/D'}${m.riseDateLabel?` <small>${m.riseDateLabel}</small>`:''}</strong></div><div><span>Puesta</span><strong>${m.set?formatTime(m.set,CONFIG.DEFAULT_TIME_ZONE):'N/D'}${m.setDateLabel?` <small>${m.setDateLabel}</small>`:''}</strong></div><div><span>Distancia</span><strong>${Number.isFinite(m.distance)?`${Math.round(m.distance).toLocaleString('es-ES')} km`:'N/D'}</strong></div><div><span>Altura · 12h</span><strong>${Number.isFinite(m.altitude)?`${Math.round(m.altitude*180/Math.PI)}°`:'N/D'}</strong></div></div><p class="astro-note">La salida y la puesta se buscan en el día anterior, el seleccionado y el siguiente para evitar huecos de información.</p>`;
+
+  const mw=state.milkyWay;
+  $('milky-way-info').innerHTML=`<div class="astro-main"><span class="astro-icon">🌌</span><div><span class="astro-kicker">Centro galáctico</span><strong>${mw.visible?'Ventana nocturna favorable':'No favorable en esta fecha'}</strong><span class="astro-muted">Índice de Vía Láctea: ${mw.score}/100</span></div></div><div class="astro-stats"><div><span>Máxima altura</span><strong>${Number.isFinite(mw.bestAltitude)?`${Math.round(mw.bestAltitude)}°`:'N/D'}</strong></div><div><span>Mejor momento</span><strong>${mw.bestTime?formatTime(mw.bestTime,CONFIG.DEFAULT_TIME_ZONE):'N/D'}</strong></div><div><span>Azimut aprox.</span><strong>${Number.isFinite(mw.centerAzimuth)?`${Math.round(mw.centerAzimuth)}°`:'N/D'}</strong></div><div><span>Luz lunar</span><strong>${m.illuminationPercent}%</strong></div></div><p class="astro-note">${mw.darkStart&&mw.darkEnd?`Noche astronómica aprox.: ${formatTime(mw.darkStart,CONFIG.DEFAULT_TIME_ZONE)}–${formatTime(mw.darkEnd,CONFIG.DEFAULT_TIME_ZONE)}.`:mw.note}</p>`;
+
+  const n=state.night;
+  $('night-conditions').innerHTML=`<div class="night-score"><div><span>Índice nocturno</span><strong>${n.score}/100</strong></div><span class="night-score-label">${n.score>=81?'Excelente':n.score>=61?'Favorable':n.score>=41?'Moderado':'Limitado'}</span></div><div class="night-grid"><div><span>☁️ Nubosidad entrada noche</span><strong>${Number.isFinite(n.cloudiness)?Math.round(n.cloudiness)+' %':'N/D'}</strong></div><div><span>🌙 Iluminación lunar</span><strong>${m.illuminationPercent} %</strong></div><div><span>🌧 Prob. lluvia</span><strong>${Number.isFinite(n.rainProbability)?Math.round(n.rainProbability)+' %':'N/D'}</strong></div><div><span>👁 Visibilidad</span><strong>${Number.isFinite(n.visibility)?n.visibility.toLocaleString('es-ES',{maximumFractionDigits:1})+' km':'N/D'}</strong></div></div><p class="astro-note">Se pondera especialmente la nubosidad de 20–21 h, la luz lunar, la lluvia y la visibilidad para el inicio de una sesión nocturna.</p>`;
+
+  const calendar=calculateLunarCalendar(state.date,CONFIG.DEFAULT_TIME_ZONE);
+  $('lunar-calendar').innerHTML=calendar.map(day=>`<button type="button" class="lunar-day ${day.selected?'selected':''}" data-lunar-date="${day.date.toISOString().slice(0,10)}" title="${day.name} · ${day.illuminationPercent}% iluminada"><span>${day.label.slice(0,2)}</span><strong>${day.day}</strong><b>${day.icon}</b><small>${day.illuminationPercent}%</small></button>`).join('');
+  $('lunar-calendar').querySelectorAll('[data-lunar-date]').forEach(btn=>btn.addEventListener('click',()=>{state.date=btn.dataset.lunarDate;renderAll();}));
+
+  $('astro-events').innerHTML=state.events.length?state.events.map(evt=>`<div class="astro-event"><span class="astro-event-icon">${evt.icon}</span><div><strong>${evt.title}</strong><span>${evt.detail}</span></div></div>`).join(''):'<div class="empty">No hay eventos destacados calculados para esta fecha.</div>';
+  $('astro-status').textContent=`Actualizado · ${state.name} · ${state.date}`;
   updateLinks();
-  $('astro-status').textContent=`Actualizado · ${$('astro-location').value||'Ubicación'} · ${date}`;
 }
 
-async function getWeatherForMunicipality(m){
-  const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION);
-  if(cached)return cached;
-  const normalized=processAemetData(await getWeatherData(m.id),m);
-  saveWeatherCache(m.id,normalized);
-  return normalized;
-}
-
-function renderOpportunityCards(ranked){
-  const container=$('astro-opportunity-ranking');
-  if(!container)return;
-  const medals=['🥇','🥈','🥉'];
-  container.innerHTML = ranked.slice(0,6).map((item,index)=>`<button class="ranking-row astro-ranking-row" data-opportunity-id="${item.location.id}" type="button"><span><strong>${medals[index]||`${index+1}.`}</strong> ${item.location.name}<small>${item.category}</small></span><strong>${item.score}/100</strong></button>`).join('') || '<div class="empty">No se han podido obtener predicciones para las localizaciones.</div>';
-  container.querySelectorAll('[data-opportunity-id]').forEach(button=>{
-    button.addEventListener('click',()=>{
-      const item=ranked.find(x=>x.location.id===button.dataset.opportunityId);
-      if(!item)return;
-      const q=new URLSearchParams({
-        lat:String(item.location.latitude),
-        lon:String(item.location.longitude),
-        date:$('astro-date').value,
-        name:item.location.name,
-        mode:currentMode()
-      });
-      location.href=`index.html?${q.toString()}`;
-    });
-  });
-}
-
-async function refreshOpportunityRanking(){
-  const status=$('astro-map-score-status');
-  if(!status)return;
-  status.textContent='Analizando…';
-  try{
-    const mode=currentMode();
-    const ranked=await exploreMurcia({weatherLoader:getWeatherForMunicipality,mode,date:$('astro-date').value});
-    renderOpportunityCards(ranked);
-    status.textContent=`${Math.min(ranked.length,6)} destacadas de ${ranked.length}`;
-  }catch(error){
-    status.textContent='No disponible';
-    $('astro-opportunity-ranking').innerHTML=`<div class="empty">No se ha podido cargar el ranking de oportunidades: ${error.message}</div>`;
+async function renderAll(){
+  try {
+    $('astro-status').textContent='Actualizando…';
+    state.date=$('astro-date').value||state.date;state.name=$('astro-location').value||state.name;state.lat=Number($('astro-lat').value);state.lon=Number($('astro-lon').value);
+    state.openWeather=await getOpenWeatherForecast(state.lat,state.lon,{force:false});
+  } catch(error) {
+    state.openWeather=null;
   }
+  try { render(); } catch(error) { $('astro-status').textContent=`Error: ${error.message}`; }
 }
 
-async function refreshAstronomy({reloadMap=true}={}){
-  render();
-  if(reloadMap) await refreshOpportunityRanking();
-}
-
-const st=paramsState();
-if(Number.isFinite(st.lat))$('astro-lat').value=st.lat;
-if(Number.isFinite(st.lon))$('astro-lon').value=st.lon;
-$('astro-date').value=st.date;
-$('astro-location').value=st.name;
-$('astro-update').addEventListener('click',()=>refreshAstronomy({reloadMap:true}));
-['astro-lat','astro-lon','astro-location'].forEach(id=>$(id).addEventListener('change',()=>refreshAstronomy({reloadMap:true})));
-$('astro-date').addEventListener('change',()=>refreshAstronomy({reloadMap:true}));
-$('astro-date').addEventListener('input',render);
-refreshAstronomy({reloadMap:true}).catch(error=>{ $('astro-status').textContent=`Error: ${error.message}`; });
+$('astro-update').addEventListener('click',renderAll);
+$('astro-date').addEventListener('change',renderAll);
+['astro-location','astro-lat','astro-lon'].forEach(id=>$(id).addEventListener('change',renderAll));
+$('astro-date').value=state.date;$('astro-location').value=state.name;$('astro-lat').value=state.lat;$('astro-lon').value=state.lon;
+renderAll();

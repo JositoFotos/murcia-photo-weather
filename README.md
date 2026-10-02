@@ -419,3 +419,18 @@ Murcia Photo Weather Planner es un proyecto en evolución. Se irán incorporando
 
 ### Cartografía
 El mapa admite CARTO Dark Matter como base visual cuando se configura una clave gratuita de basemaps de CARTO; sin esa clave se utiliza OpenStreetMap como respaldo. CARTO exige clave y atribución para sus basemaps actuales.
+
+
+## Secciones principales
+
+### 📸 Fotografía
+Consulta una localización, fecha y modo fotográfico. Aquí se concentran AEMET, OpenWeather, la línea de luz solar, el meteograma, el índice fotográfico y el **mejor momento** para el modo seleccionado.
+
+### 🌌 Astronomía
+Planifica fotografía nocturna con Luna, Vía Láctea, condiciones nocturnas, calendario lunar y eventos astronómicos. La ubicación y fecha se conservan al navegar entre secciones.
+
+### ⭐ Recomendados
+Permite comparar localizaciones de Murcia en un mapa y en un ranking. Puedes seleccionar fecha, modo y momento del día o definir una franja personalizada para planificar una sesión.
+
+### ☁️ Evolución de nubosidad
+OpenWeather aporta la nubosidad total por intervalos de 3 horas. La aplicación la representa como evolución temporal y la utiliza como factor fotográfico: puede aportar valor a paisaje, amanecer/atardecer, costa, naturaleza y arquitectura, mientras que se penaliza especialmente en fotografía nocturna.

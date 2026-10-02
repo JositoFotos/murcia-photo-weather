@@ -7,8 +7,8 @@ let opportunityLayer;
 let externalLayers = {};
 let controls;
 
-export function initMap(onSelect) {
-  map = L.map('map', { zoomControl: true, fullscreenControl: true }).setView(CONFIG.DEFAULT_MAP_CENTER, CONFIG.DEFAULT_ZOOM);
+export function initMap(onSelect, containerId = 'map') {
+  map = L.map(containerId, { zoomControl: true, fullscreenControl: true }).setView(CONFIG.DEFAULT_MAP_CENTER, CONFIG.DEFAULT_ZOOM);
   const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   photoLayer = L.layerGroup().addTo(map);
   opportunityLayer = L.layerGroup().addTo(map);
@@ -36,6 +36,7 @@ export function setLocation(lat, lon, { draggable=true, label='' }={}) {
 }
 
 export function renderPhotoLocations(locations, scoreLookup=new Map()) {
+  if (!photoLayer) return;
   photoLayer.clearLayers();
   locations.forEach(location => {
     const score = scoreLookup.get(location.id);
@@ -47,6 +48,7 @@ export function renderPhotoLocations(locations, scoreLookup=new Map()) {
 }
 
 export function renderOpportunities(items, onClick) {
+  if (!opportunityLayer) return;
   opportunityLayer.clearLayers();
   items.forEach(item => {
     const c = item.score>=80?'#31c48d':item.score>=65?'#4da3ff':item.score>=50?'#eab308':item.score>=30?'#f97316':'#ef4444';
