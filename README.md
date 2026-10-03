@@ -434,3 +434,10 @@ Permite comparar localizaciones de Murcia en un mapa y en un ranking. Puedes sel
 
 ### ☁️ Evolución de nubosidad
 OpenWeather aporta la nubosidad total por intervalos de 3 horas. La aplicación la representa como evolución temporal y la utiliza como factor fotográfico: puede aportar valor a paisaje, amanecer/atardecer, costa, naturaleza y arquitectura, mientras que se penaliza especialmente en fotografía nocturna.
+
+### Visibilidad fotográfica
+La visibilidad de OpenWeather se expresa en kilómetros (hasta 10 km). El índice fotográfico la convierte en una puntuación creciente: a mayor visibilidad, mayor puntuación, evitando interpretar kilómetros como un porcentaje.
+
+## Corrección de consistencia del índice
+
+La versión v23 unifica el cálculo del índice fotográfico entre **Fotografía** y **Recomendados** y utiliza OpenWeather para las coordenadas exactas de cada localización, evitando discrepancias por agregaciones o posiciones diferentes.

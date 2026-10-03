@@ -36,11 +36,12 @@ async function weatherLoader(m){
   return normalized;
 }
 
-async function openWeatherLoader(m){
-  const cached = opportunityOpenWeatherSessionCache.get(m.id);
+async function openWeatherLoader(location){
+  const cacheKey = `${Number(location.latitude).toFixed(4)}_${Number(location.longitude).toFixed(4)}`;
+  const cached = opportunityOpenWeatherSessionCache.get(cacheKey);
   if (cached) return cached;
-  const forecast = await getOpenWeatherForecast(m.latitude,m.longitude,{force:false});
-  opportunityOpenWeatherSessionCache.set(m.id, forecast);
+  const forecast = await getOpenWeatherForecast(location.latitude,location.longitude,{force:false});
+  opportunityOpenWeatherSessionCache.set(cacheKey, forecast);
   return forecast;
 }
 

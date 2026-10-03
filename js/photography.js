@@ -5,6 +5,15 @@ function clamp(n, min=0, max=100) { return Math.min(max, Math.max(min, n)); }
 function absenceScore(v, badAt=50) { return Number.isFinite(v) ? clamp(100 - (v / badAt) * 100) : 60; }
 function moderateScore(v, ideal, tolerance) { return Number.isFinite(v) ? clamp(100 - Math.abs(v - ideal) / tolerance * 100) : 60; }
 function positiveCloudiness(cloud, desired=55) { return Number.isFinite(cloud) ? clamp(100 - Math.abs(cloud - desired) / 55 * 100) : 60; }
+function visibilityScoreFromKm(km) {
+  if (!Number.isFinite(km)) return 60;
+  const v = clamp(km, 0, 10);
+  if (v <= 1) return clamp(v * 20);
+  if (v <= 3) return clamp(20 + ((v - 1) / 2) * 30);
+  if (v <= 5) return clamp(50 + ((v - 3) / 2) * 20);
+  if (v <= 8) return clamp(70 + ((v - 5) / 3) * 20);
+  return clamp(90 + ((v - 8) / 2) * 10);
+}
 
 function lateNightAdverseConditions(data) {
   const hourly = Array.isArray(data.hourly) ? data.hourly : [];
@@ -63,6 +72,25 @@ function skyComponents(hourly) {
   return { low: cloudProxy, mid: cloudProxy, high: cloudProxy, descriptions };
 }
 
+
+export function buildPhotographyScoreData(hourly = [], openWeatherPoints = []) {
+  const valid = Array.isArray(hourly) ? hourly : [];
+  const values = key => valid.map(row => row?.[key]).filter(Number.isFinite);
+  const windValues = valid.map(row => row?.wind?.speed).filter(Number.isFinite);
+  const tempValues = values('temperature');
+  const humidityValues = values('humidity');
+  return {
+    rain: Math.max(...values('precipitation'), NaN),
+    rainProbability: Math.max(...values('rainProbability'), NaN),
+    stormProbability: Math.max(...values('stormProbability'), NaN),
+    wind: windValues.length ? windValues.reduce((a,b) => a + b, 0) / windValues.length : null,
+    temperature: tempValues.length ? tempValues.reduce((a,b) => a + b, 0) / tempValues.length : null,
+    humidity: humidityValues.length ? humidityValues.reduce((a,b) => a + b, 0) / humidityValues.length : null,
+    hourly: valid,
+    openWeatherPoints: Array.isArray(openWeatherPoints) ? openWeatherPoints : []
+  };
+}
+
 export function calculatePhotographyScore(data, mode='landscape') {
   const weights = CONFIG.PHOTOGRAPHY_SCORE_WEIGHTS[mode] ?? CONFIG.PHOTOGRAPHY_SCORE_WEIGHTS.landscape;
   const components = skyComponents(data.hourly ?? []);
@@ -75,7 +103,7 @@ export function calculatePhotographyScore(data, mode='landscape') {
   const wind = Number.isFinite(data.wind) ? moderateScore(data.wind, mode === 'coast' ? 12 : 6, 18) : 65;
   const temperature = Number.isFinite(data.temperature) ? moderateScore(data.temperature, 21, 18) : 60;
   const humidity = Number.isFinite(data.humidity) ? moderateScore(data.humidity, 60, 45) : 60;
-  const visibility = Number.isFinite(data.visibility) ? absenceScore(100-data.visibility, 100) : 60;
+  const visibility = visibilityScoreFromKm(data.visibility);
   const scores = { rain, rainProbability, lowCloud, midCloud, highCloud, storms, wind, temperature, humidity, visibility };
   const raw = Object.entries(weights).reduce((sum, [key, weight]) => sum + scores[key] * weight, 0);
   const cloudiness = cloudinessScoreForMode(data, mode);

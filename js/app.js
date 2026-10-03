@@ -4,7 +4,7 @@ import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
 import { getWeatherData, processAemetData } from './aemet.js';
 import { findDay, getHourlyForDate, summarizeWeather, summarizeSkyConditions, sortForecastDates, conditionLabel } from './weather.js';
 import { calculateSunTimes, formatTime, formatRange, getMoonData, calculateMilkyWay, calculateAstronomicalEvents } from './astronomy.js';
-import { calculatePhotographyScore, calculateSpecificIndices, calculateBestPhotographyWindows, calculateBestPhotographyMoment } from './photography.js';
+import { calculatePhotographyScore, calculateSpecificIndices, calculateBestPhotographyWindows, calculateBestPhotographyMoment, buildPhotographyScoreData } from './photography.js';
 import { initMap, setLocation, renderPhotoLocations, renderOpportunities as renderOpportunityMarkers, fitMurcia } from './map.js';
 import { searchLocation, nearestMunicipality, getMunicipalityById } from './locations.js';
 import { loadWeatherCache, saveWeatherCache, saveHistory, loadHistory, deleteHistory, clearHistory, loadFavorites, saveFavorite, deleteFavorite } from './storage.js';
@@ -69,8 +69,9 @@ async function refreshWeather(force=false){
 function renderDateTabs(dates){ const valid=(dates||[]).filter(Boolean); const picker=$('date-picker'); picker.value=state.date; picker.disabled=false; picker.min=valid[0]??''; picker.max=valid.at(-1)??''; $('date-tabs').innerHTML=''; valid.forEach((d,i)=>{ const b=document.createElement('button'); b.className='date-tab'; b.classList.toggle('active',d===state.date); b.textContent=i===0?'Hoy':i===1?'Mañana':`+${i}`; b.title=d; b.addEventListener('click',async()=>{ state.date=d; state.selectedOpportunityScore=null; picker.value=d; renderDateTabs(valid); picker.blur(); refreshDashboard(); await refreshOpenWeather(false); }); $('date-tabs').appendChild(b); }); if(!valid.length){ const b=document.createElement('span'); b.className='date-empty'; b.textContent='Sin fechas de AEMET'; $('date-tabs').appendChild(b); } }
 
 function aggregateForScore(){
-  const hourly=getHourlyForDate(state.weather,state.date); const s=summarizeWeather(state.weather,state.date);
-  return { rain: Math.max(...hourly.map(x=>x.precipitation).filter(Number.isFinite),NaN), rainProbability:s.rainProbability, stormProbability:s.stormProbability, wind:s.wind.mean, temperature:(s.temperature.max+s.temperature.min)/2, humidity:s.humidity.mean, hourly, openWeatherPoints: state.openWeather ? getOpenWeatherForDate(state.openWeather,state.date) : [] };
+  const hourly=getHourlyForDate(state.weather,state.date);
+  const openWeatherPoints=state.openWeather ? getOpenWeatherForDate(state.openWeather,state.date) : [];
+  return buildPhotographyScoreData(hourly, openWeatherPoints);
 }
 
 function renderSunTimeline(){

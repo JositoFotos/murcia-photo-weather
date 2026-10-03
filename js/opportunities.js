@@ -1,22 +1,13 @@
 import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
 import { getMunicipalityById } from './locations.js';
-import { calculatePhotographyScore, calculateBestPhotographyMoment } from './photography.js';
+import { calculatePhotographyScore, calculateBestPhotographyMoment, buildPhotographyScoreData } from './photography.js';
 import { calculateSunTimes } from './astronomy.js';
 
 export function calculateLocationOpportunity(location, weather, astronomy, mode, openWeatherPoints = []) {
   const hourly = weather?.hourly ?? [];
   const candidates = hourly.filter(x => !x.date || x.date === astronomy.date);
   const base = candidates.length ? candidates : hourly;
-  const agg = {
-    rain: maxOrNull(base.map(x=>x.precipitation)),
-    rainProbability: maxOrNull(base.map(x=>x.rainProbability)),
-    stormProbability: maxOrNull(base.map(x=>x.stormProbability)),
-    wind: avgOrNull(base.map(x=>x.wind?.speed)),
-    temperature: avgOrNull(base.map(x=>x.temperature)),
-    humidity: avgOrNull(base.map(x=>x.humidity)),
-    hourly: base,
-    openWeatherPoints
-  };
+  const agg = buildPhotographyScoreData(base, openWeatherPoints);
   const scored = calculatePhotographyScore(agg, mode);
   const bestMoment = calculateBestPhotographyMoment({ hourly: base, openWeatherPoints, astronomy: astronomy.sunTimes ?? null, mode });
   return { location, score:scored.score, category:scored.category, factors:scored.factors, positives:scored.positives, negatives:scored.negatives, bestMoment, astronomy, weather, openWeatherPoints };
@@ -31,7 +22,7 @@ export function compareLocations(results) { return rankLocations(results).slice(
 export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, mode, date, filterMoment = 'all', startHour = null, endHour = null } = {}) {
   const out=[];
   const weatherByMunicipality = new Map();
-  const openWeatherByMunicipality = new Map();
+  const openWeatherByLocation = new Map();
   const selectedDate = date || new Date().toISOString().slice(0,10);
 
   // Consultamos AEMET una sola vez por municipio y de forma secuencial.
@@ -57,14 +48,16 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
     if (index < municipalities.length - 1) await new Promise(resolve => setTimeout(resolve, 550));
   }
 
-  // OpenWeather tiene su propio control de llamadas; también reutilizamos los datos en esta sesión.
-  for (const municipality of municipalities) {
-    if (!openWeatherLoader) continue;
-    try {
-      const forecast = await openWeatherLoader(municipality);
-      openWeatherByMunicipality.set(municipality.id, forecast?.points?.filter(p => p.date === selectedDate) ?? []);
-    } catch (error) {
-      console.warn(`No se pudo obtener OpenWeather para ${municipality.name}:`, error);
+  // OpenWeather se obtiene para las coordenadas exactas de cada localización.
+  // Así Recomendados y Fotografía utilizan exactamente la misma referencia geográfica.
+  if (openWeatherLoader) {
+    for (const location of PHOTO_LOCATIONS) {
+      try {
+        const forecast = await openWeatherLoader(location);
+        openWeatherByLocation.set(location.id, forecast?.points?.filter(p => p.date === selectedDate) ?? []);
+      } catch (error) {
+        console.warn(`No se pudo obtener OpenWeather para ${location.name}:`, error);
+      }
     }
   }
 
@@ -73,7 +66,7 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
     if (!municipality) continue;
     const weather = weatherByMunicipality.get(municipality.id);
     if (!weather) continue;
-    const openWeatherPoints = openWeatherByMunicipality.get(municipality.id) ?? [];
+    const openWeatherPoints = openWeatherByLocation.get(location.id) ?? [];
     try {
       const hourlyForDate = weather.hourly?.filter(x => x.date === selectedDate) ?? [];
       if (!hourlyForDate.length) {
@@ -96,7 +89,12 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
           console.warn(`Sin tramo horario válido para ${location.name} dentro de la franja seleccionada`);
           continue;
         }
-        opportunity = { ...opportunity, filteredMoment, score: filteredMoment.score, category: filteredMoment.scored?.category ?? opportunity.category, factors: filteredMoment.scored?.factors ?? opportunity.factors, positives: filteredMoment.scored?.positives ?? opportunity.positives, negatives: filteredMoment.scored?.negatives ?? opportunity.negatives };
+        // El índice de la localización sigue siendo el índice general del día.
+        // La ventana seleccionada solo determina el "mejor momento" dentro de esa franja.
+        // Así Recomendados y Fotografía muestran siempre el mismo índice para una
+        // misma localización + fecha + modo, sin confundirlo con la puntuación puntual
+        // de una hora concreta.
+        opportunity = { ...opportunity, filteredMoment };
       }
       out.push(opportunity);
     } catch (error) {
