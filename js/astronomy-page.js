@@ -23,6 +23,59 @@ function updateLinks(){
   $('recommended-link').href=`recomendados.html?${q}`;
 }
 
+function describeLightPollution(index, mpsas) {
+  const ratio = Number(index);
+  if (!Number.isFinite(ratio)) {
+    return {
+      title: 'No hay una valoración disponible',
+      level: 3,
+      explanation: 'No se ha podido interpretar el valor del atlas para este punto.',
+      effect: 'No podemos estimar cómo influye el brillo artificial en el contraste de la sesión.',
+      advice: 'Comprueba las coordenadas o vuelve a consultar el atlas.'
+    };
+  }
+
+  const ratioText = ratio.toLocaleString('es-ES', { maximumFractionDigits: ratio < 0.1 ? 3 : 2 });
+  if (ratio < 0.11) {
+    return {
+      title: 'Cielo muy poco afectado por luz artificial', level: 1,
+      explanation: `El atlas estima que el componente artificial equivale a ${ratioText} veces el brillo natural de referencia: su contribución es pequeña.`,
+      effect: 'Es un entorno favorable para conservar el contraste de estrellas débiles y estructuras tenues de la Vía Láctea, siempre que la Luna, la nubosidad y la transparencia acompañen.',
+      advice: 'Prioriza una noche sin Luna y un cielo despejado; revisa también el resplandor del horizonte, que puede ser mayor que el del cenit.'
+    };
+  }
+  if (ratio < 0.33) {
+    return {
+      title: 'Cielo oscuro con poca influencia artificial', level: 2,
+      explanation: `La aportación artificial estimada es ${ratioText} veces el brillo natural de referencia. La luz artificial añade algo de resplandor, pero sigue siendo relativamente baja.`,
+      effect: 'Buena base para fotografía de estrellas y Vía Láctea. Las estructuras más tenues pueden perder algo de contraste, especialmente hacia el horizonte de núcleos poblados.',
+      advice: 'Busca un encuadre cuyo horizonte mire en dirección contraria a pueblos, carreteras o instalaciones iluminadas.'
+    };
+  }
+  if (ratio < 1) {
+    return {
+      title: 'La contaminación lumínica ya puede notarse', level: 3,
+      explanation: `El atlas estima una contribución artificial de ${ratioText} veces el brillo natural de referencia. En este rango, la luz artificial todavía es menor que la componente natural de referencia, pero ya puede elevar el fondo del cielo.`,
+      effect: 'Las estrellas brillantes seguirán siendo fotografiables, pero el contraste de las partes débiles de la Vía Láctea puede reducirse; el horizonte puede mostrar más resplandor.',
+      advice: 'Prueba una composición amplia, evita orientar la cámara hacia zonas urbanas y considera desplazarte a un lugar más oscuro si buscas detalle fino en las nubes de polvo.'
+    };
+  }
+  if (ratio < 3) {
+    return {
+      title: 'La luz artificial tiene una influencia importante', level: 4,
+      explanation: `La contribución artificial estimada es ${ratioText} veces el brillo natural de referencia; según el índice del atlas, ya supera esa referencia natural.`,
+      effect: 'El fondo del cielo tenderá a verse más claro y habrá menos contraste para estructuras tenues. La Vía Láctea puede captarse en condiciones favorables, pero los detalles débiles serán más difíciles de registrar y procesar.',
+      advice: 'Para fotografiar la Vía Láctea con más detalle, merece la pena buscar un emplazamiento más oscuro. Si te quedas aquí, evita el horizonte iluminado y ajusta la sesión a una noche sin Luna y con poca nubosidad.'
+    };
+  }
+  return {
+    title: 'Cielo muy afectado por luz artificial', level: 5,
+    explanation: `La contribución artificial estimada es ${ratioText} veces el brillo natural de referencia. El resplandor artificial domina claramente en el modelo del atlas.`,
+    effect: 'El fondo del cielo puede quedar muy luminoso y el contraste de la Vía Láctea tenue y de otros detalles débiles se reduce de forma considerable.',
+    advice: 'Para astrofotografía de cielo profundo o una Vía Láctea con detalle, busca otra localización más oscura. Este punto puede seguir sirviendo para escenas nocturnas que incorporen elementos urbanos o estrellas brillantes.'
+  };
+}
+
 function renderLightPollutionCard(){
   const host=$('light-pollution-info');
   if(!host) return;
@@ -39,21 +92,31 @@ function renderLightPollutionCard(){
   const lp=state.lightPollution;
   const index=Number(lp.lpIndex);
   const mpsas=Number(lp.mpsas);
-  const impact=lp.impact||{label:'N/D',level:3,description:'No hay valoración disponible.'};
+  const narrative=describeLightPollution(index,mpsas);
+  const impact=lp.impact||{label:'N/D',level:narrative.level,description:''};
+  const level=Math.max(1,Math.min(5,Number(narrative.level)||Number(impact.level)||3));
   const fmt=(n,d=2)=>Number(n).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const indexDisplay=Number.isFinite(index)?`${fmt(index,index<0.1?3:2)}×`:'N/D';
+  const mpsasDisplay=Number.isFinite(mpsas)?fmt(mpsas,2):'N/D';
   host.innerHTML=`
-    <div class="lp-summary">
-      <div class="lp-impact lp-level-${Math.max(1,Math.min(5,Number(impact.level)||3))}"><span>Impacto orientativo para astrofotografía</span><strong>${escapeHtml(impact.label||'N/D')}</strong><small>${escapeHtml(impact.description||'')}</small></div>
+    <section class="lp-story lp-level-${level}">
+      <div class="lp-story-top"><span class="lp-story-kicker">Qué significa para tu sesión</span><span class="lp-impact-pill lp-level-${level}">${escapeHtml(impact.label||'Impacto orientativo')}</span></div>
+      <h3 class="lp-story-title">${escapeHtml(narrative.title)}</h3>
+      <p class="lp-story-explanation">${escapeHtml(narrative.explanation)}</p>
+      <div class="lp-story-effect"><strong>🌌 ¿Qué puedes esperar en tus fotos?</strong><p>${escapeHtml(narrative.effect)}</p></div>
+      <div class="lp-story-advice"><strong>📸 Recomendación práctica</strong><p>${escapeHtml(narrative.advice)}</p></div>
+      <div class="lp-meter" role="img" aria-label="Nivel orientativo de influencia de la contaminación lumínica: ${level} de 5"><span class="lp-meter-fill lp-level-${level}" style="width:${Math.round((level/5)*100)}%"></span></div>
+      <div class="lp-meter-labels"><span>Menor influencia</span><span>Mayor influencia</span></div>
+    </section>
+    <details class="lp-technical"><summary>Ver los datos numéricos del atlas y qué significan</summary>
       <div class="lp-primary-values">
-        <div class="lp-stat lp-index-stat"><span>Índice LP del atlas</span><strong>${fmt(index,index<0.1?3:2)}×</strong><small>Índice relativo del atlas; no es Bortle</small></div>
-        <div class="lp-stat"><span>Brillo del cielo en el cenit</span><strong>${fmt(mpsas,2)}</strong><small>mag/arcsec² · cuanto mayor, más oscuro</small></div>
-        <div class="lp-stat"><span>Zona LP del atlas</span><strong>${escapeHtml(lp.lpZone||'N/D')}</strong><small>Clasificación propia del atlas</small></div>
+        <div class="lp-stat lp-index-stat"><span>Índice LP</span><strong>${indexDisplay}</strong><small>Relación entre brillo artificial estimado y brillo natural de referencia. Por encima de 1×, la componente artificial supera esa referencia.</small></div>
+        <div class="lp-stat"><span>Brillo estimado del cielo en el cenit</span><strong>${mpsasDisplay}</strong><small>mag/arcsec². En esta escala, un número mayor representa un cielo más oscuro. Es un valor modelizado, no una medición local.</small></div>
+        <div class="lp-stat"><span>Zona del atlas</span><strong>${escapeHtml(lp.lpZone||'N/D')}</strong><small>Categoría propia del atlas; no equivale a una clase Bortle.</small></div>
       </div>
-    </div>
-    <div class="lp-meter" role="img" aria-label="Impacto orientativo ${escapeHtml(impact.label||'no disponible')}"><span class="lp-meter-fill lp-level-${Math.max(1,Math.min(5,Number(impact.level)||3))}" style="width:${Math.round((Math.max(1,Math.min(5,Number(impact.level)||3))/5)*100)}%"></span></div>
-    <p class="lp-note">Este atlas modeliza el brillo artificial del cielo en el cenit a partir de datos satelitales; no es una medición in situ ni equivale a la escala Bortle. La Luna, la nubosidad y la transparencia atmosférica se valoran por separado.</p>`;
+    </details>
+    <p class="lp-note">El atlas estima el brillo artificial del cielo en el cenit usando un modelo basado en datos satelitales. No mide las condiciones exactas sobre el terreno ni representa por sí solo todo el horizonte. La Luna, las nubes y la transparencia atmosférica influyen por separado en la sesión real.</p>`;
 }
-
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 
 let lpRequestId=0;
