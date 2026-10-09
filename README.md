@@ -441,3 +441,12 @@ La visibilidad de OpenWeather se expresa en kilómetros (hasta 10 km). El índic
 ## Corrección de consistencia del índice
 
 La versión v23 unifica el cálculo del índice fotográfico entre **Fotografía** y **Recomendados** y utiliza OpenWeather para las coordenadas exactas de cada localización, evitando discrepancias por agregaciones o posiciones diferentes.
+
+
+## Contaminación lumínica en Astronomía
+
+La pestaña **Astronomía** consulta el *World Atlas of Artificial Night Sky Brightness 2025* de **David Lorenz** para mostrar, en las coordenadas seleccionadas, el índice LP del atlas, la zona LP y el brillo del cielo en el cenit expresado en mag/arcsec². El valor se obtiene de las teselas numéricas del atlas mediante una función de Netlify; el navegador no descarga ni almacena el conjunto de datos completo.
+
+**Atribución de la fuente:** David Lorenz, *World Atlas of Artificial Night Sky Brightness 2025*, https://djlorenz.github.io/astronomy/lp/. El autor autorizó por correo el uso en este sitio no comercial con la condición de citar su nombre y la fuente.
+
+El atlas modeliza el brillo artificial en el cenit a partir de datos satelitales; **no es una medición in situ ni equivale a la escala Bortle**. La etiqueta de impacto fotográfico que muestra la aplicación es una interpretación orientativa propia, no una clasificación oficial del atlas. En esta primera versión, la contaminación lumínica se muestra como información separada y todavía no modifica el índice nocturno general.

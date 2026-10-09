@@ -11,6 +11,7 @@ export const CONFIG = {
   DEFAULT_TIME_ZONE: 'Europe/Madrid',
   // La clave se guarda como secreto OPENWEATHER_API en Netlify; nunca se publica aquí.
   OPENWEATHER_PROXY_URL: 'https://murcia-photo-weather.netlify.app/.netlify/functions/openweather',
+  LIGHT_POLLUTION_PROXY_URL: 'https://murcia-photo-weather.netlify.app/.netlify/functions/light-pollution',
   MAP_LAYERS: {
     precipitation: 'precipitation_new',
     clouds: 'clouds_new',
