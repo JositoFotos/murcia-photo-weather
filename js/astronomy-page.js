@@ -2,6 +2,7 @@ import { calculateSunTimes, formatTime, getMoonData, calculateMilkyWay, calculat
 import { getOpenWeatherForecast, getOpenWeatherForDate } from './openweather.js';
 import { CONFIG } from './config.js';
 import { getLightPollution } from './light-pollution.js';
+import { initLightPollutionMap, updateLightPollutionMap } from './light-pollution-map.js';
 
 const $=id=>document.getElementById(id);
 const localDateISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
@@ -21,6 +22,8 @@ function updateLinks(){
   $('back-photo').href=`index.html?${q}`;
   $('back-recommended').href=`recomendados.html?${q}`;
   $('recommended-link').href=`recomendados.html?${q}`;
+  const nextUrl = `${location.pathname}?${q.toString()}`;
+  if (`${location.pathname}${location.search}` !== nextUrl) history.replaceState(null, '', nextUrl);
 }
 
 function describeLightPollution(index, mpsas) {
@@ -139,6 +142,7 @@ async function loadLightPollution(force=false){
     state.lightPollutionError=error?.message||'Error de red al consultar el atlas.';
   }
   renderLightPollutionCard();
+  updateLightPollutionMap(lat, lon, state.name, state.lightPollution, { pan: false });
 }
 
 function render(){
@@ -165,6 +169,7 @@ function render(){
 
   $('astro-events').innerHTML=state.events.length?state.events.map(evt=>`<div class="astro-event"><span class="astro-event-icon">${evt.icon}</span><div><strong>${evt.title}</strong><span>${evt.detail}</span></div></div>`).join(''):'<div class="empty">No hay eventos destacados calculados para esta fecha.</div>';
   renderLightPollutionCard();
+  updateLightPollutionMap(state.lat, state.lon, state.name, state.lightPollution, { pan: true });
   $('astro-status').textContent=`Actualizado · ${state.name} · ${state.date}`;
   updateLinks();
 }
@@ -190,4 +195,20 @@ $('astro-update').addEventListener('click',renderAll);
 $('astro-date').addEventListener('change',renderAll);
 ['astro-location','astro-lat','astro-lon'].forEach(id=>$(id).addEventListener('change',renderAll));
 $('astro-date').value=state.date;$('astro-location').value=state.name;$('astro-lat').value=state.lat;$('astro-lon').value=state.lon;
+initLightPollutionMap({
+  latitude: state.lat,
+  longitude: state.lon,
+  name: state.name,
+  usePoint: async ({ latitude, longitude, data }) => {
+    state.lat = Number(latitude);
+    state.lon = Number(longitude);
+    state.name = `Punto del atlas (${state.lat.toFixed(3)}, ${state.lon.toFixed(3)})`;
+    state.lightPollution = data || null;
+    $('astro-location').value = state.name;
+    $('astro-lat').value = state.lat;
+    $('astro-lon').value = state.lon;
+    updateLightPollutionMap(state.lat, state.lon, state.name, state.lightPollution, { pan: true });
+    await renderAll();
+  }
+});
 renderAll();

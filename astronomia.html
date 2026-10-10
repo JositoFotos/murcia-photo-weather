@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1220">
 <title>Murcia Photo Weather · Astronomía</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -32,6 +33,23 @@
       <section class="card light-pollution-card">
         <div class="card-head"><div><span class="section-kicker">Atlas mundial 2025</span><h2>🌃 Contaminación lumínica</h2><p class="muted">Estimación del brillo artificial del cielo para las coordenadas seleccionadas.</p></div><a class="lp-source-link" href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener noreferrer">Ver atlas ↗</a></div>
         <div id="light-pollution-info" class="light-pollution-info" aria-live="polite"><div class="lp-loading"><span class="skeleton lg"></span><span>Consultando el atlas de contaminación lumínica…</span></div></div>
+        <section class="lp-map-section" aria-labelledby="lp-map-title">
+          <div class="lp-map-heading">
+            <div><h3 id="lp-map-title">🗺️ Explorar zonas más oscuras</h3><p class="muted">El color del atlas permite comparar el entorno. Acerca el mapa y pulsa en otro punto para consultar su estimación.</p></div>
+            <button type="button" id="lp-map-center" class="secondary lp-map-center">Centrar en mi ubicación</button>
+          </div>
+          <div id="lp-atlas-map" role="application" aria-label="Mapa interactivo de contaminación lumínica con el atlas de 2025"></div>
+          <div class="lp-map-legend" aria-label="Leyenda de zonas del atlas">
+            <span class="lp-legend-item"><i class="lp-zone-dark"></i><b>0–1b</b><small>Muy oscuro</small></span>
+            <span class="lp-legend-item"><i class="lp-zone-blue"></i><b>2a–2b</b><small>Baja influencia</small></span>
+            <span class="lp-legend-item"><i class="lp-zone-green"></i><b>3a–3b</b><small>Moderada-baja</small></span>
+            <span class="lp-legend-item"><i class="lp-zone-yellow"></i><b>4a–4b</b><small>Moderada</small></span>
+            <span class="lp-legend-item"><i class="lp-zone-orange"></i><b>5a–5b</b><small>Alta</small></span>
+            <span class="lp-legend-item"><i class="lp-zone-red"></i><b>6a–7b</b><small>Muy alta</small></span>
+          </div>
+          <p class="lp-map-disclaimer">Las zonas y colores pertenecen al atlas y representan brillo artificial modelizado en el cenit; no son una clasificación Bortle. Los colores más oscuros suelen indicar menor brillo artificial.</p>
+          <div id="lp-map-point-info" class="lp-map-point-info" aria-live="polite"><span class="lp-map-hint">Selecciona un punto del mapa para consultar sus datos y compararlos con la ubicación actual.</span></div>
+        </section>
         <p class="lp-attribution">Datos: David Lorenz, <a href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener noreferrer">World Atlas of Artificial Night Sky Brightness 2025</a>. Uso autorizado para este sitio no comercial.</p>
       </section>
       <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list"></div></section>
@@ -39,6 +57,7 @@
   </section>
 </main>
 <footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="astro-status">Calculando…</span></footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
 <script type="module" src="js/astronomy-page.js"></script>
 </body></html>

@@ -247,3 +247,51 @@ button,.nav-link{transition:all .2s ease}.top-actions button,.mode-buttons butto
 .lp-story.lp-level-4{border-color:rgba(251,146,60,.4)}
 .lp-story.lp-level-5{border-color:rgba(248,113,113,.42)}
 @media(max-width:760px){.lp-story{padding:13px}.lp-story-explanation{font-size:.94rem}.lp-story-effect,.lp-story-advice{padding:11px}.lp-technical .lp-primary-values{grid-template-columns:1fr}.lp-story-title{font-size:1.12rem}}
+
+/* Mapa interactivo del Atlas mundial de contaminación lumínica 2025 */
+.lp-map-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);min-width:0}
+.lp-map-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
+.lp-map-heading h3{margin:0 0 5px;font-size:1.08rem;color:var(--text)}
+.lp-map-heading p{margin:0;line-height:1.5;font-size:.86rem}
+.lp-map-center{white-space:nowrap;flex:0 0 auto}
+#lp-atlas-map{width:100%;height:430px;min-height:300px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b1220;z-index:0}
+#lp-atlas-map .leaflet-control-attribution{font-size:10px;max-width:85%;line-height:1.35}
+#lp-atlas-map .leaflet-control-layers{color:#e2e8f0;background:#172235;border:1px solid #334155}
+#lp-atlas-map .leaflet-control-layers label{color:#e2e8f0}
+#lp-atlas-map .leaflet-control-scale-line{background:rgba(15,23,42,.8);color:#f8fafc;border-color:#cbd5e1;text-shadow:none}
+.lp-map-legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:12px 2px 4px}
+.lp-legend-item{display:grid;grid-template-columns:16px auto;column-gap:6px;align-items:center;font-size:.75rem;color:var(--text)}
+.lp-legend-item i,.lp-atlas-map-mini-legend i{width:14px;height:14px;border-radius:3px;display:inline-block;grid-row:span 2;border:1px solid rgba(255,255,255,.18)}
+.lp-legend-item small{grid-column:2;color:var(--muted);font-size:.68rem}
+.lp-zone-dark{background:linear-gradient(135deg,#000,#424242)}
+.lp-zone-blue{background:linear-gradient(135deg,#142f72,#2154d8)}
+.lp-zone-green{background:linear-gradient(135deg,#0f5714,#1fa12a)}
+.lp-zone-yellow{background:linear-gradient(135deg,#6e641e,#b8a625)}
+.lp-zone-orange{background:linear-gradient(135deg,#bf641e,#fd9650)}
+.lp-zone-red{background:linear-gradient(135deg,#fb5a49,#f2998a,#f2f2f2)}
+.lp-map-disclaimer{margin:5px 0 12px;color:var(--muted);font-size:.74rem;line-height:1.5}
+.lp-map-point-info{min-width:0}
+.lp-map-hint{display:block;padding:12px 14px;border:1px dashed #475569;border-radius:10px;color:var(--muted);font-size:.86rem;line-height:1.5}
+.lp-map-query-loading{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:rgba(15,23,42,.5);color:var(--muted)}
+.lp-map-query-loading .skeleton{height:18px;width:44px;flex:0 0 44px}
+.lp-map-candidate{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:rgba(15,23,42,.6)}
+.lp-map-candidate-main{min-width:0}
+.lp-map-candidate-kicker{display:block;color:var(--muted);font-size:.74rem;margin-bottom:4px}
+.lp-map-candidate-main>strong{display:block;color:var(--accent);font-size:1.02rem}
+.lp-map-candidate-main p{margin:6px 0;color:var(--text);font-size:.88rem;line-height:1.5}
+.lp-map-candidate-main small{color:var(--muted);font-size:.75rem}
+.lp-map-candidate button{flex:0 0 auto}
+.lp-map-query-error{padding:12px 14px;border:1px solid rgba(248,113,113,.35);border-radius:10px;background:rgba(127,29,29,.12)}
+.lp-map-query-error p{margin:5px 0 0;color:var(--muted);font-size:.85rem}
+.lp-atlas-map-mini-legend{background:rgba(15,23,42,.94);border:1px solid #475569;border-radius:8px;color:#f8fafc;padding:8px 10px;display:flex;flex-direction:column;gap:5px;font-size:11px;box-shadow:0 1px 5px rgba(0,0,0,.3)}
+.lp-atlas-map-mini-legend span{display:flex;align-items:center;gap:6px}
+.lp-atlas-map-mini-legend i{width:10px;height:10px;flex:0 0 10px}
+@media(max-width:760px){
+  #lp-atlas-map{height:340px;min-height:280px}
+  .lp-map-heading{flex-direction:column}
+  .lp-map-center{width:100%}
+  .lp-map-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .lp-map-candidate{flex-direction:column;align-items:stretch}
+  .lp-map-candidate button{width:100%}
+  #lp-atlas-map .leaflet-control-attribution{font-size:9px}
+}

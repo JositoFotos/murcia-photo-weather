@@ -452,3 +452,17 @@ La pestaña **Astronomía** consulta el *World Atlas of Artificial Night Sky Bri
 El atlas modeliza el brillo artificial en el cenit a partir de datos satelitales; **no es una medición in situ ni equivale a la escala Bortle**. La tarjeta prioriza una explicación práctica para el fotógrafo: cuánto puede elevarse el fondo del cielo, cómo puede afectar al contraste de la Vía Láctea y qué decisiones pueden ayudar en esa localización. Las cifras técnicas permanecen en un apartado desplegable.
 
 El **índice LP** expresa la relación entre brillo artificial estimado y brillo natural de referencia: 1× indica que ambos componentes son iguales; por encima de 1×, la contribución artificial estimada supera la referencia natural. El brillo del cielo expresado en **mag/arcsec²** utiliza una escala inversa: valores más altos representan un cielo más oscuro. Estas interpretaciones se basan en la explicación de métricas publicada por David Lorenz: https://djlorenz.github.io/astronomy/lp/colors.html. La valoración de impacto, el efecto fotográfico y las recomendaciones son orientativos y propios de la aplicación; no constituyen una medición local ni una clasificación oficial del atlas. La contaminación lumínica se muestra como información separada y todavía no modifica el índice nocturno general.
+
+## Mapa de contaminación lumínica
+
+La pestaña **Astronomía** incorpora un mapa interactivo con la capa raster del *World Atlas of Artificial Night Sky Brightness 2025*, de David Lorenz, superpuesta sobre OpenStreetMap. La atribución se muestra en el propio mapa y en la tarjeta de contaminación lumínica.
+
+- El mapa se centra en las coordenadas seleccionadas.
+- Los tonos más oscuros del atlas suelen representar menor brillo artificial estimado; los tonos más claros, mayor brillo artificial.
+- Puedes desplazarte, acercar y pulsar sobre cualquier punto dentro de la cobertura del atlas para consultar la estimación numérica.
+- El punto consultado muestra la zona del atlas, el índice LP y el brillo estimado del cielo. El botón **Usar este punto en Astronomía** actualiza la localización, la Luna, la Vía Láctea, las condiciones nocturnas y las demás tarjetas para esas coordenadas.
+- El mapa permite comparar visualmente zonas cercanas antes de decidir dónde realizar una sesión.
+
+**Importante:** el atlas modeliza brillo artificial del cielo en el cenit; no es una medición local y no equivale a la escala Bortle. Las condiciones reales también dependen de la Luna, nubosidad, transparencia atmosférica y del resplandor cerca del horizonte. El mapa carga las teselas públicas del atlas de David Lorenz de forma remota y consulta los valores puntuales mediante la función Netlify `light-pollution`.
+
+Fuente y atribución: David Lorenz, [World Atlas of Artificial Night Sky Brightness 2025](https://djlorenz.github.io/astronomy/lp/). Uso autorizado por el autor para este sitio no comercial.
