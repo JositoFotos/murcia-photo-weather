@@ -80,6 +80,10 @@ OpenWeather aporta nubosidad total porcentual, no una separación directa entre 
 
 ---
 
+## Diagnóstico de errores de AEMET
+
+Las respuestas de error de AEMET pueden incluir un estado dentro del JSON aunque la respuesta HTTP exterior sea 200. La función de Netlify normaliza ahora esos estados para que la aplicación distinga correctamente entre credenciales rechazadas, límite de peticiones, falta de datos y una respuesta con formato inesperado. No se muestran claves ni secretos en el navegador.
+
 ## Meteorología
 
 Los datos meteorológicos proceden de **AEMET** y pueden incluir, cuando están disponibles:

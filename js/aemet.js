@@ -53,7 +53,16 @@ async function fetchJson(url, { timeoutMs = 20000, retries = 2 } = {}) {
       if (!response.ok) {
         const error = new Error(payload?.error || payload?.descripcion || `AEMET respondió con HTTP ${response.status}.`);
         error.status = response.status;
+        error.code = payload?.code;
         error.retryAfterMs = response.status === 429 ? retryDelay(response, attempt) : null;
+        throw error;
+      }
+      // Do not treat an upstream error envelope as forecast data if a proxy returns HTTP 200.
+      if (payload && typeof payload === 'object' && (payload.error || (Number(payload.estado) >= 400 && payload.descripcion))) {
+        const status = Number(payload.status ?? payload.upstreamStatus ?? payload.estado);
+        const error = new Error(payload.error || payload.descripcion || 'AEMET ha devuelto un error.');
+        if (Number.isInteger(status) && status >= 400 && status <= 599) error.status = status;
+        error.code = payload.code || (error.status === 401 || error.status === 403 ? 'AEMET_UNAUTHORIZED' : undefined);
         throw error;
       }
       return payload;
@@ -147,7 +156,17 @@ export function processAemetData(raw, municipality) {
   const hourlyPayload = unwrap(raw.hourly);
   const dailyRows = Array.isArray(dailyPayload?.prediccion?.dia) ? dailyPayload.prediccion.dia : [];
   const hourlyRows = Array.isArray(hourlyPayload?.prediccion?.dia) ? hourlyPayload.prediccion.dia : [];
-  if (!dailyRows.length && !hourlyRows.length) throw new Error('AEMET ha respondido, pero no contiene predicciones utilizables.');
+  if (!dailyRows.length && !hourlyRows.length) {
+    const upstreamError = [raw.daily, raw.hourly].find(value => value && typeof value === 'object' && (value.error || (Number(value.estado) >= 400 && value.descripcion)));
+    if (upstreamError) {
+      const error = new Error(upstreamError.error || upstreamError.descripcion || 'AEMET ha devuelto un error en vez de una predicción.');
+      const status = Number(upstreamError.status ?? upstreamError.upstreamStatus ?? upstreamError.estado);
+      if (Number.isInteger(status) && status >= 400 && status <= 599) error.status = status;
+      error.code = upstreamError.code;
+      throw error;
+    }
+    throw new Error('AEMET ha respondido, pero no contiene predicciones utilizables. La respuesta no incluye prediccion.dia; revisa el estado de la API Key y el formato devuelto por el servicio.');
+  }
   return normalizeWeatherData({ municipality, dailyRows, hourlyRows, dailyRaw: dailyPayload, hourlyRaw: hourlyPayload });
 }
 
