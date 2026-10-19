@@ -3,3 +3,22 @@
 
 [build]
   publish = "."
+
+# Friendly aliases for direct navigation without a .html suffix.
+[[redirects]]
+  from = "/fotografia"
+  to = "/index.html"
+  status = 301
+  force = false
+
+[[redirects]]
+  from = "/astronomia"
+  to = "/astronomia.html"
+  status = 301
+  force = false
+
+[[redirects]]
+  from = "/recomendados"
+  to = "/recomendados.html"
+  status = 301
+  force = false

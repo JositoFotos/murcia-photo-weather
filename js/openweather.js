@@ -6,7 +6,7 @@ function jsonRead(key, fallback = null) {
   try { return JSON.parse(localStorage.getItem(key) ?? JSON.stringify(fallback)); }
   catch { return fallback; }
 }
-function jsonWrite(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function jsonWrite(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* La caché es opcional; no debe impedir usar una respuesta válida. */ } }
 function keyFor(lat, lon) { return `${CACHE_PREFIX}${Number(lat).toFixed(4)}_${Number(lon).toFixed(4)}`; }
 function finite(value) { const n = Number(value); return Number.isFinite(n) ? n : null; }
 
@@ -32,16 +32,28 @@ async function fetchJson(url, { timeoutMs = 20000, retries = 1 } = {}) {
       const text = await response.text();
       let payload = null;
       try { payload = text ? JSON.parse(text) : null; }
-      catch { throw new Error('OpenWeather ha devuelto una respuesta que no es JSON válido.'); }
+      catch {
+        const error = new Error(!response.ok ? `El servicio de OpenWeather en Netlify respondió con HTTP ${response.status}. Comprueba que la función esté desplegada.` : 'OpenWeather ha devuelto una respuesta que no es JSON válido.');
+        error.status = response.status;
+        throw error;
+      }
       if (!response.ok) {
-        const error = new Error(payload?.message || `HTTP ${response.status}`);
+        const error = new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
         error.status = response.status;
         throw error;
       }
       return payload;
     } catch (error) {
-      lastError = error.name === 'AbortError' ? new Error('Tiempo de espera agotado al consultar OpenWeather.') : error;
-      if (attempt < retries) await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
+      if (error.name === 'AbortError') {
+        lastError = new Error('OpenWeather ha tardado demasiado en responder. Puedes reintentar.');
+      } else if (error instanceof TypeError && /fetch/i.test(error.message)) {
+        lastError = new Error('No se pudo conectar con el servicio de OpenWeather en Netlify. Comprueba la conexión y el despliegue (posible error de red/CORS).');
+      } else {
+        lastError = error;
+      }
+      const transient = !error?.status || error.status === 429 || error.status >= 500;
+      if (attempt < retries && transient) await new Promise(resolve => setTimeout(resolve, error?.status === 429 ? 1200 * (attempt + 1) : 600 * (attempt + 1)));
+      else break;
     } finally {
       clearTimeout(timer);
     }

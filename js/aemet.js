@@ -44,22 +44,40 @@ async function fetchJson(url, { timeoutMs = 20000, retries = 2 } = {}) {
       const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
       const text = await response.text();
       let payload;
-      try { payload = text ? JSON.parse(text) : null; } catch { throw new Error('AEMET ha devuelto una respuesta que no es JSON válido.'); }
+      try { payload = text ? JSON.parse(text) : null; }
+      catch {
+        const error = new Error(!response.ok ? `El servicio de AEMET en Netlify respondió con HTTP ${response.status}. Comprueba que la función esté desplegada.` : 'AEMET o el servicio intermedio devolvió una respuesta que no es JSON válido.');
+        error.status = response.status;
+        throw error;
+      }
       if (!response.ok) {
-        const error = new Error(payload?.descripcion || `HTTP ${response.status}`);
+        const error = new Error(payload?.error || payload?.descripcion || `AEMET respondió con HTTP ${response.status}.`);
         error.status = response.status;
         error.retryAfterMs = response.status === 429 ? retryDelay(response, attempt) : null;
         throw error;
       }
       return payload;
     } catch (error) {
-      lastError = error.name === 'AbortError' ? new Error('Tiempo de espera agotado al consultar AEMET.') : error;
-      if (attempt < retries) {
-        await sleep(Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs : 600 * (attempt + 1));
+      if (error.name === 'AbortError') {
+        lastError = new Error('La consulta a AEMET ha tardado demasiado. Puedes reintentar.');
+        lastError.code = 'TIMEOUT';
+      } else if (error instanceof TypeError && /fetch/i.test(error.message)) {
+        lastError = new Error('No se pudo conectar con el servicio de AEMET en Netlify. Comprueba la conexión y que el despliegue de Netlify esté activo (posible error de red/CORS).');
+        lastError.code = 'NETWORK';
+      } else {
+        lastError = error;
+      }
+      const transient = !lastError.status || lastError.status === 429 || lastError.status >= 500;
+      if (attempt < retries && transient) {
+        const delay = Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs :
+          (lastError.status === 429 ? Math.min(1500 * (2 ** attempt), 10000) : 700 * (attempt + 1));
+        await sleep(delay);
+      } else {
+        break;
       }
     } finally { clearTimeout(timeout); }
   }
-  throw lastError;
+  throw lastError || new Error('No se pudieron obtener datos de AEMET.');
 }
 
 async function requestAemetEndpoint(path) {

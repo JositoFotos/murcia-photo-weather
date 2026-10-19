@@ -19,10 +19,11 @@ function avgOrNull(a){ const x=a.filter(Number.isFinite); return x.length?x.redu
 export function rankLocations(results) { return [...results].sort((a,b)=>b.score-a.score); }
 export function compareLocations(results) { return rankLocations(results).slice(0,6); }
 
-export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, mode, date, filterMoment = 'all', startHour = null, endHour = null } = {}) {
+export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, mode, date, filterMoment = 'all', startHour = null, endHour = null, onProgress = null } = {}) {
   const out=[];
   const weatherByMunicipality = new Map();
   const openWeatherByLocation = new Map();
+  const errors = [];
   const selectedDate = date || new Date().toISOString().slice(0,10);
 
   // Consultamos AEMET una sola vez por municipio y de forma secuencial.
@@ -39,25 +40,45 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
 
   for (let index = 0; index < municipalities.length; index += 1) {
     const municipality = municipalities[index];
+    let rateLimited=false;
     try {
       const weather = await weatherLoader(municipality);
       weatherByMunicipality.set(municipality.id, weather);
     } catch (error) {
+      errors.push({ service:'AEMET', municipality:municipality.name, error });
       console.warn(`No se pudo obtener AEMET para ${municipality.name}:`, error);
+      rateLimited=error?.status===429;
     }
+    if(typeof onProgress==='function') onProgress({phase:'aemet',completed:index+1,total:municipalities.length,location:municipality.name});
+    if(rateLimited) break;
     if (index < municipalities.length - 1) await new Promise(resolve => setTimeout(resolve, 550));
+  }
+
+  // Si AEMET no ha devuelto ningún municipio, no gastamos llamadas de OpenWeather
+  // que no podrían producir recomendaciones útiles.
+  if (!weatherByMunicipality.size && errors.length) {
+    const preferred = errors.find(item => item.error?.status === 429) || errors[0];
+    const error = new Error(preferred.error?.status === 429 ? 'AEMET ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a intentarlo.' : `${preferred.service}: ${preferred.error?.message || 'no se pudieron obtener datos'}`);
+    error.status = preferred.error?.status;
+    error.details = errors.map(item => ({ service:item.service, location:item.location || item.municipality, status:item.error?.status, message:item.error?.message }));
+    throw error;
   }
 
   // OpenWeather se obtiene para las coordenadas exactas de cada localización.
   // Así Recomendados y Fotografía utilizan exactamente la misma referencia geográfica.
   if (openWeatherLoader) {
-    for (const location of PHOTO_LOCATIONS) {
+    let openWeatherCount=0;
+    const locationsWithWeather=PHOTO_LOCATIONS.filter(location=>{const m=getMunicipalityById(location.municipalityId);const w=m?weatherByMunicipality.get(m.id):null;return Boolean(w?.hourly?.some(point=>point.date===selectedDate));});
+    for (const location of locationsWithWeather) {
       try {
         const forecast = await openWeatherLoader(location);
         openWeatherByLocation.set(location.id, forecast?.points?.filter(p => p.date === selectedDate) ?? []);
       } catch (error) {
+        errors.push({ service:'OpenWeather', location:location.name, error });
         console.warn(`No se pudo obtener OpenWeather para ${location.name}:`, error);
       }
+      openWeatherCount += 1;
+      if(typeof onProgress==='function') onProgress({phase:'openweather',completed:openWeatherCount,total:locationsWithWeather.length,location:location.name});
     }
   }
 
@@ -70,6 +91,8 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
     try {
       const hourlyForDate = weather.hourly?.filter(x => x.date === selectedDate) ?? [];
       if (!hourlyForDate.length) {
+        const error=new Error(`Sin predicción horaria para ${selectedDate}. Prueba una fecha disponible de AEMET.`);
+        errors.push({service:'AEMET',location:location.name,error});
         console.warn(`Sin predicción horaria para ${location.name} el ${selectedDate}`);
         continue;
       }
@@ -98,8 +121,18 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
       }
       out.push(opportunity);
     } catch (error) {
+      errors.push({service:'Cálculo',location:location.name,error});
       console.warn(`No se pudo analizar ${location.name}:`, error);
     }
   }
-  return rankLocations(out);
+  if (!out.length && errors.length) {
+    const preferred = errors.find(item => item.error?.status === 429) || errors[0];
+    const error = new Error(preferred.error?.status === 429 ? 'AEMET ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a intentarlo.' : `${preferred.service}: ${preferred.error?.message || 'no se pudieron obtener datos'}`);
+    error.status = preferred.error?.status;
+    error.details = errors.map(item => ({ service:item.service, location:item.location || item.municipality, status:item.error?.status, message:item.error?.message }));
+    throw error;
+  }
+  const ranked = rankLocations(out);
+  ranked.errors = errors.map(item => ({ service:item.service, location:item.location || item.municipality, status:item.error?.status, message:item.error?.message }));
+  return ranked;
 }

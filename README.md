@@ -74,13 +74,9 @@ También se muestran factores positivos y negativos para explicar por qué una s
 
 ## El cielo y la nubosidad
 
-La sección **☁️ Posibilidad de nubes** utiliza la información de estado del cielo disponible en AEMET para mostrar la evolución prevista y aportar una interpretación orientada a fotografía.
+La tarjeta **Datos complementarios · OpenWeather** muestra la evolución de nubosidad total en intervalos de tres horas, y la aplicación utiliza ese dato como complemento de la previsión oficial de AEMET para orientar la valoración fotográfica.
 
-La aplicación puede diferenciar descripciones como despejado, poco nuboso, intervalos nubosos, nuboso, muy nuboso, cubierto y otras descripciones proporcionadas por la fuente.
-
-Cuando resulta apropiado, se añade una valoración fotográfica del cielo, especialmente útil alrededor del amanecer y el atardecer.
-
-Importante: el endpoint municipal utilizado no proporciona directamente porcentajes independientes de **nubosidad baja, media y alta**, por lo que la aplicación no inventa esos valores.
+OpenWeather aporta nubosidad total porcentual, no una separación directa entre nubes bajas, medias y altas en el producto de previsión gratuito que utiliza esta aplicación. Por ello, la interfaz no inventa porcentajes por capas.
 
 ---
 
@@ -188,8 +184,9 @@ La aplicación puede mostrar eventos astronómicos relevantes asociados a la fec
 - Cuarto creciente.
 - Luna llena.
 - Cuarto menguante.
-- Salida y puesta de la Luna.
 - Referencias estacionales como equinoccios y solsticios.
+
+La salida y puesta de la Luna se consultan en la tarjeta **Luna**, para evitar duplicar la misma información.
 
 Los eventos que requieren fuentes astronómicas específicas adicionales se incorporarán únicamente cuando puedan calcularse o verificarse de forma fiable.
 
@@ -197,7 +194,7 @@ Los eventos que requieren fuentes astronómicas específicas adicionales se inco
 
 ## 🗺️ Mapa de oportunidades
 
-El **Mapa de oportunidades** analiza las localizaciones fotográficas disponibles y las representa según su interés fotográfico para la fecha, momento y modo seleccionados.
+En la pestaña **⭐ Recomendados**, el **Mapa de oportunidades** analiza las localizaciones fotográficas disponibles y las representa según su interés fotográfico para la fecha, momento y modo seleccionados.
 
 La escala utilizada es:
 
@@ -213,9 +210,9 @@ El objetivo es facilitar una lectura rápida del territorio y detectar dónde pu
 
 ---
 
-## 🔎 Explorar Murcia
+## 🔎 Recomendados y planificación de sesión
 
-La función **Explorar Murcia** permite analizar automáticamente varias localizaciones fotográficas y ordenarlas según su interés.
+La pestaña **⭐ Recomendados** permite analizar automáticamente varias localizaciones fotográficas y ordenarlas según su interés. La búsqueda solo se ejecuta al pulsar **Buscar oportunidades**, para que puedas cambiar fecha, modo o franja horaria antes de consultar.
 
 El sistema:
 
@@ -239,9 +236,8 @@ El ranking destaca las mejores localizaciones y ofrece una explicación de los p
 También es posible comparar varias localizaciones teniendo en cuenta variables como:
 
 - Índice fotográfico.
-- Calidad del cielo.
+- Nubosidad total y su evolución.
 - Lluvia.
-- Nubosidad.
 - Viento.
 - Tormentas.
 - Amanecer.
@@ -307,13 +303,24 @@ No necesitas instalar ningún programa ni crear una cuenta.
 3. Elige la fecha.
 4. Selecciona el tipo de fotografía.
 5. Consulta el índice fotográfico.
-6. Revisa las mejores horas.
-7. Comprueba la nubosidad y el meteograma.
+6. Consulta la tarjeta **Mejor momento** para el modo elegido.
+7. Revisa la nubosidad, los datos complementarios y el meteograma.
 8. Consulta Luna, Vía Láctea y eventos astronómicos cuando sea relevante.
-9. Utiliza **Explorar Murcia** para comparar localizaciones.
-10. Abre los detalles de la oportunidad que más te interese y planifica la sesión.
+9. Abre **Recomendados** para comparar localizaciones y definir una franja horaria.
+10. Selecciona una oportunidad para reutilizar sus coordenadas en las demás pestañas.
 
 ---
+
+## ⏳ Carga de datos y errores temporales
+
+Al consultar datos de servicios externos, la aplicación muestra indicadores de carga mientras la petición está en curso. Si un servicio no responde, la interfaz explica qué fuente ha fallado y presenta una opción para reintentar cuando corresponda.
+
+- **AEMET** es la fuente principal de predicción meteorológica. Puede limitar temporalmente las peticiones; si hay una previsión guardada, la aplicación puede mostrarla indicando que procede de caché.
+- **OpenWeather** aporta variables meteorológicas complementarias, con previsión en tramos de tres horas. Si el servicio no está disponible, la tarjeta muestra el error sin bloquear el resto del dashboard.
+- **Astronomía** (Sol y Luna) se calcula localmente con SunCalc. La previsión meteorológica que acompaña al análisis nocturno se carga por separado.
+- **Contaminación lumínica** utiliza el World Atlas of Artificial Night Sky Brightness 2025 y dispone de una opción para volver a consultar el punto.
+
+`N/D` significa que esa variable no está disponible para la localización, fecha o fuente consultada; no equivale necesariamente a un error de toda la aplicación.
 
 ## 📱 Uso en móvil
 
@@ -417,9 +424,6 @@ La utilidad del programa está precisamente en **combinar todas estas piezas en 
 Murcia Photo Weather Planner es un proyecto en evolución. Se irán incorporando mejoras y nuevas fuentes o cálculos astronómicos cuando aporten información útil y fiable para la planificación fotográfica en la Región de Murcia.
 
 
-### Cartografía
-El mapa admite CARTO Dark Matter como base visual cuando se configura una clave gratuita de basemaps de CARTO; sin esa clave se utiliza OpenStreetMap como respaldo. CARTO exige clave y atribución para sus basemaps actuales.
-
 
 ## Secciones principales
 
@@ -466,3 +470,13 @@ La pestaña **Astronomía** incorpora un mapa interactivo con la capa raster del
 **Importante:** el atlas modeliza brillo artificial del cielo en el cenit; no es una medición local y no equivale a la escala Bortle. Las condiciones reales también dependen de la Luna, nubosidad, transparencia atmosférica y del resplandor cerca del horizonte. El mapa carga las teselas públicas del atlas de David Lorenz de forma remota y consulta los valores puntuales mediante la función Netlify `light-pollution`.
 
 Fuente y atribución: David Lorenz, [World Atlas of Artificial Night Sky Brightness 2025](https://djlorenz.github.io/astronomy/lp/). Uso autorizado por el autor para este sitio no comercial.
+
+
+## Corrección de inicialización astronómica (v28)
+
+Se ha eliminado una declaración duplicada de `escapeHtml` en `js/astronomy-page.js` que impedía cargar el módulo como JavaScript ES module en el navegador. Esa excepción evitaba que se inicializara la página, por lo que permanecían los skeletons y el estado «Preparando cálculos astronómicos…». También se sincronizan los enlaces hacia Astronomía y Recomendados justo antes de navegar para transmitir siempre la fecha, el modo y la ubicación más recientes.
+
+
+## Persistencia del punto seleccionado (v29)
+
+La localización elegida en el mapa del atlas de contaminación lumínica se guarda como contexto de navegación al pulsar **Usar este punto en Astronomía**. Al abrir Recomendados, aunque todavía no se ejecute una búsqueda, los enlaces a Fotografía y Astronomía conservan las coordenadas, el nombre, la fecha y el modo fotográfico. El contexto se transmite mediante los parámetros de URL y se conserva además en `sessionStorage` como respaldo dentro de la misma pestaña. Si no hay coordenadas válidas, la aplicación nunca las convierte accidentalmente en `0,0`.

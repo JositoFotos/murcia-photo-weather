@@ -3,20 +3,27 @@ import { getOpenWeatherForecast, getOpenWeatherForDate } from './openweather.js'
 import { CONFIG } from './config.js';
 import { getLightPollution } from './light-pollution.js';
 import { initLightPollutionMap, updateLightPollutionMap } from './light-pollution-map.js';
+import { getNavigationContextFromUrl, getSavedNavigationContext, saveNavigationContext } from './navigation-context.js';
 
 const $=id=>document.getElementById(id);
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 const localDateISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const params=new URLSearchParams(location.search);
+const urlContext=getNavigationContextFromUrl();
+const savedContext=getSavedNavigationContext();
+const initialContext=urlContext||savedContext;
 const state={
-  lat:Number(params.get('lat'))||37.983,
-  lon:Number(params.get('lon'))||-1.129,
-  name:params.get('name')||'Murcia',
-  date:params.get('date')||localDateISO(),
-  mode:params.get('mode')||'landscape',
-  moon:null,milkyWay:null,events:[],sun:null,openWeather:null,night:null,lightPollution:null,lightPollutionLoading:true,lightPollutionError:null
+  lat:initialContext?.latitude ?? 37.983,
+  lon:initialContext?.longitude ?? -1.129,
+  name:params.get('name') || urlContext?.name || savedContext?.name || 'Murcia',
+  date:params.get('date')||urlContext?.date||savedContext?.date||localDateISO(),
+  mode:params.get('mode')||urlContext?.mode||savedContext?.mode||'landscape',
+  moon:null,milkyWay:null,events:[],sun:null,openWeather:null,openWeatherLoading:true,openWeatherError:null,night:null,lightPollution:null,lightPollutionLoading:true,lightPollutionError:null
 };
+let astronomyRequestId=0;
 
 function updateLinks(){
+  saveNavigationContext({latitude:state.lat,longitude:state.lon,date:state.date,name:state.name,mode:state.mode});
   const q=new URLSearchParams({lat:String(state.lat),lon:String(state.lon),date:state.date,name:state.name,mode:state.mode});
   $('photo-link').href=`index.html?${q}`;
   $('back-photo').href=`index.html?${q}`;
@@ -82,6 +89,7 @@ function describeLightPollution(index, mpsas) {
 function renderLightPollutionCard(){
   const host=$('light-pollution-info');
   if(!host) return;
+  host.setAttribute('aria-busy',String(state.lightPollutionLoading));
   if(state.lightPollutionLoading){
     host.innerHTML='<div class="lp-loading"><span class="skeleton lg"></span><span>Consultando el atlas de contaminación lumínica…</span></div>';
     return;
@@ -120,7 +128,6 @@ function renderLightPollutionCard(){
     </details>
     <p class="lp-note">El atlas estima el brillo artificial del cielo en el cenit usando un modelo basado en datos satelitales. No mide las condiciones exactas sobre el terreno ni representa por sí solo todo el horizonte. La Luna, las nubes y la transparencia atmosférica influyen por separado en la sesión real.</p>`;
 }
-function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 
 let lpRequestId=0;
 async function loadLightPollution(force=false){
@@ -160,8 +167,19 @@ function render(){
   const mw=state.milkyWay;
   $('milky-way-info').innerHTML=`<div class="astro-main"><span class="astro-icon">🌌</span><div><span class="astro-kicker">Centro galáctico</span><strong>${mw.visible?'Ventana nocturna favorable':'No favorable en esta fecha'}</strong><span class="astro-muted">Índice de Vía Láctea: ${mw.score}/100</span></div></div><div class="astro-stats"><div><span>Máxima altura</span><strong>${Number.isFinite(mw.bestAltitude)?`${Math.round(mw.bestAltitude)}°`:'N/D'}</strong></div><div><span>Mejor momento</span><strong>${mw.bestTime?formatTime(mw.bestTime,CONFIG.DEFAULT_TIME_ZONE):'N/D'}</strong></div><div><span>Azimut aprox.</span><strong>${Number.isFinite(mw.centerAzimuth)?`${Math.round(mw.centerAzimuth)}°`:'N/D'}</strong></div><div><span>Luz lunar</span><strong>${m.illuminationPercent}%</strong></div></div><p class="astro-note">${mw.darkStart&&mw.darkEnd?`Noche astronómica aprox.: ${formatTime(mw.darkStart,CONFIG.DEFAULT_TIME_ZONE)}–${formatTime(mw.darkEnd,CONFIG.DEFAULT_TIME_ZONE)}.`:mw.note}</p>`;
 
-  const n=state.night;
-  $('night-conditions').innerHTML=`<div class="night-score"><div><span>Índice nocturno</span><strong>${n.score}/100</strong></div><span class="night-score-label">${n.score>=81?'Excelente':n.score>=61?'Favorable':n.score>=41?'Moderado':'Limitado'}</span></div><div class="night-grid"><div><span>☁️ Nubosidad entrada noche</span><strong>${Number.isFinite(n.cloudiness)?Math.round(n.cloudiness)+' %':'N/D'}</strong></div><div><span>🌙 Iluminación lunar</span><strong>${m.illuminationPercent} %</strong></div><div><span>🌧 Prob. lluvia</span><strong>${Number.isFinite(n.rainProbability)?Math.round(n.rainProbability)+' %':'N/D'}</strong></div><div><span>👁 Visibilidad</span><strong>${Number.isFinite(n.visibility)?n.visibility.toLocaleString('es-ES',{maximumFractionDigits:1})+' km':'N/D'}</strong></div></div><p class="astro-note">Se pondera especialmente la nubosidad de 20–21 h, la luz lunar, la lluvia y la visibilidad para el inicio de una sesión nocturna.</p>`;
+  const nightHost=$('night-conditions');
+  if(state.openWeatherLoading){
+    nightHost.setAttribute('aria-busy','true');
+    nightHost.innerHTML='<div class="panel-skeleton" role="status" aria-live="polite"><span>Consultando previsión para calcular las condiciones nocturnas…</span><span class="skeleton md"></span><span class="skeleton lg"></span></div>';
+  } else if(state.openWeatherError){
+    nightHost.setAttribute('aria-busy','false');
+    nightHost.innerHTML=`<div class="api-error" role="alert"><strong>No se pudo cargar la previsión complementaria</strong><p>${escapeHtml(state.openWeatherError)}</p><button type="button" id="retry-astro-openweather" class="primary">Reintentar OpenWeather</button></div><p class="astro-note">La Luna, la Vía Láctea y los eventos astronómicos se calculan localmente; las condiciones nocturnas requieren la previsión meteorológica.</p>`;
+    $('retry-astro-openweather')?.addEventListener('click',()=>renderAll({forceOpenWeather:true}));
+  } else {
+    nightHost.setAttribute('aria-busy','false');
+    const n=state.night;
+    nightHost.innerHTML=`<div class="night-score"><div><span>Índice nocturno</span><strong>${n.score}/100</strong></div><span class="night-score-label">${n.score>=81?'Excelente':n.score>=61?'Favorable':n.score>=41?'Moderado':'Limitado'}</span></div><div class="night-grid"><div><span>☁️ Nubosidad entrada noche</span><strong>${Number.isFinite(n.cloudiness)?Math.round(n.cloudiness)+' %':'N/D'}</strong></div><div><span>🌙 Iluminación lunar</span><strong>${m.illuminationPercent} %</strong></div><div><span>🌧 Prob. lluvia</span><strong>${Number.isFinite(n.rainProbability)?Math.round(n.rainProbability)+' %':'N/D'}</strong></div><div><span>👁 Visibilidad</span><strong>${Number.isFinite(n.visibility)?n.visibility.toLocaleString('es-ES',{maximumFractionDigits:1})+' km':'N/D'}</strong></div></div><p class="astro-note">Se pondera especialmente la nubosidad de 20–21 h, la luz lunar, la lluvia y la visibilidad para el inicio de una sesión nocturna.</p>`;
+  }
 
   const calendar=calculateLunarCalendar(state.date,CONFIG.DEFAULT_TIME_ZONE);
   $('lunar-calendar').innerHTML=calendar.map(day=>`<button type="button" class="lunar-day ${day.selected?'selected':''}" data-lunar-date="${day.date.toISOString().slice(0,10)}" title="${day.name} · ${day.illuminationPercent}% iluminada"><span>${day.label.slice(0,2)}</span><strong>${day.day}</strong><b>${day.icon}</b><small>${day.illuminationPercent}%</small></button>`).join('');
@@ -170,32 +188,91 @@ function render(){
   $('astro-events').innerHTML=state.events.length?state.events.map(evt=>`<div class="astro-event"><span class="astro-event-icon">${evt.icon}</span><div><strong>${evt.title}</strong><span>${evt.detail}</span></div></div>`).join(''):'<div class="empty">No hay eventos destacados calculados para esta fecha.</div>';
   renderLightPollutionCard();
   updateLightPollutionMap(state.lat, state.lon, state.name, state.lightPollution, { pan: true });
-  $('astro-status').textContent=`Actualizado · ${state.name} · ${state.date}`;
+  ['moon-info','milky-way-info','lunar-calendar','astro-events'].forEach(id=>$(id)?.setAttribute('aria-busy','false'));
+  document.body.classList.remove('app-starting');
+  document.querySelector('.astro-content')?.setAttribute('aria-busy','false');
+  $('astro-status').textContent=state.openWeatherLoading?`Cálculos astronómicos listos · consultando previsión complementaria…`:`Actualizado · ${state.name} · ${state.date}`;
   updateLinks();
 }
 
-async function renderAll(){
-  state.date=$('astro-date').value||state.date;
-  state.name=$('astro-location').value||state.name;
-  state.lat=Number($('astro-lat').value);
-  state.lon=Number($('astro-lon').value);
-  const lat=state.lat,lon=state.lon;
-  $('astro-status').textContent='Actualizando…';
-  loadLightPollution(false);
-  try {
-    state.openWeather=await getOpenWeatherForecast(lat,lon,{force:false});
-  } catch(error) {
-    state.openWeather=null;
-  }
-  if(lat!==state.lat || lon!==state.lon) return;
-  try { render(); } catch(error) { $('astro-status').textContent=`Error: ${error.message}`; }
+function showAstronomyError(error){
+  const message=error?.message||'No se han podido calcular los datos astronómicos.';
+  const ids=['moon-info','milky-way-info','night-conditions','astro-events','lunar-calendar'];
+  ids.forEach((id,index)=>{
+    const el=$(id);
+    if(!el) return;
+    el.setAttribute('aria-busy','false');
+    const retry=index===0?'<button type="button" class="secondary" id="retry-astro-library">Recargar cálculos</button>':'';
+    el.innerHTML=`<div class="component-error" role="alert"><strong>No se pudieron calcular estos datos</strong><p>${escapeHtml(message)} Comprueba que las librerías astronómicas se hayan cargado y recarga la página.</p>${retry}</div>`;
+  });
+  $('retry-astro-library')?.addEventListener('click',()=>location.reload());
+  document.body.classList.remove('app-starting');
+  document.querySelector('.astro-content')?.setAttribute('aria-busy','false');
+  $('astro-status').textContent=`Error en los cálculos astronómicos: ${message}`;
 }
 
-$('astro-update').addEventListener('click',renderAll);
-$('astro-date').addEventListener('change',renderAll);
-['astro-location','astro-lat','astro-lon'].forEach(id=>$(id).addEventListener('change',renderAll));
+function friendlyOpenWeatherError(error){
+  if(error?.status===429) return 'OpenWeather ha limitado temporalmente las consultas (HTTP 429). Espera un poco y vuelve a intentarlo.';
+  if(error?.status===401 || error?.status===403) return 'OpenWeather ha rechazado la credencial. Revisa el secreto OPENWEATHER_API en Netlify.';
+  if(error?.status>=500) return `OpenWeather no está respondiendo correctamente (HTTP ${error.status}). Prueba más tarde.`;
+  return error?.message||'No se ha podido obtener la previsión de OpenWeather.';
+}
+
+async function renderAll(options={}){
+  const requestId=++astronomyRequestId;
+  const dateValue=$('astro-date').value||state.date;
+  const nameValue=$('astro-location').value.trim()||'Localización seleccionada';
+  const latText=$('astro-lat').value;
+  const lonText=$('astro-lon').value;
+  const lat=latText===''?NaN:Number(latText);
+  const lon=lonText===''?NaN:Number(lonText);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180){
+    const message='Revisa los campos: introduce una fecha válida, una latitud entre −90 y 90 y una longitud entre −180 y 180.';
+    state.openWeatherLoading=false; state.openWeatherError=null;
+    showAstronomyError(new Error(message));
+    if(Number.isFinite(lat) && lat>=-90 && lat<=90 && Number.isFinite(lon) && lon>=-180 && lon<=180) { state.lat=lat; state.lon=lon; state.name=nameValue; loadLightPollution(false); }
+    else {state.lightPollutionLoading=false;state.lightPollutionError='Introduce coordenadas válidas para consultar el atlas.';renderLightPollutionCard();}
+    return;
+  }
+  state.date=dateValue; state.name=nameValue; state.lat=lat; state.lon=lon;
+  state.openWeather=null; state.openWeatherLoading=true; state.openWeatherError=null;
+  $('astro-status').textContent='Calculando Luna, Vía Láctea y eventos…';
+  document.querySelector('.astro-content')?.setAttribute('aria-busy','true');
+  ['moon-info','milky-way-info','lunar-calendar','astro-events'].forEach(id=>$(id)?.setAttribute('aria-busy','true'));
+  loadLightPollution(Boolean(options.forceLightPollution));
+
+  // Render local SunCalc calculations immediately; do not make the astronomy page
+  // wait for a remote weather service before showing Moon and event information.
+  let astronomyCalculationError=null;
+  try { render(); }
+  catch(error) { astronomyCalculationError=error; showAstronomyError(error); }
+  if(requestId!==astronomyRequestId) return;
+
+  try {
+    const forecast=await getOpenWeatherForecast(lat,lon,{force:Boolean(options.forceOpenWeather)});
+    if(requestId!==astronomyRequestId) return;
+    state.openWeather=forecast; state.openWeatherError=null;
+  } catch(error) {
+    if(requestId!==astronomyRequestId) return;
+    state.openWeather=null; state.openWeatherError=friendlyOpenWeatherError(error);
+  } finally {
+    if(requestId===astronomyRequestId) state.openWeatherLoading=false;
+  }
+  if(requestId!==astronomyRequestId) return;
+  try { render(); }
+  catch(error) { astronomyCalculationError=error; showAstronomyError(error); }
+  document.body.classList.remove('app-starting');
+  if(astronomyCalculationError) $('astro-status').textContent=`Cálculos astronómicos no disponibles: ${astronomyCalculationError.message}`;
+  else if(!state.openWeatherError) $('astro-status').textContent=`Actualizado · ${state.name} · ${state.date}`;
+  else $('astro-status').textContent='Astronomía calculada · previsión meteorológica no disponible';
+}
+
+$('astro-update').addEventListener('click',()=>renderAll({forceOpenWeather:true,forceLightPollution:true}));
+$('astro-date').addEventListener('change',()=>renderAll());
+['astro-location','astro-lat','astro-lon'].forEach(id=>$(id).addEventListener('change',()=>renderAll()));
 $('astro-date').value=state.date;$('astro-location').value=state.name;$('astro-lat').value=state.lat;$('astro-lon').value=state.lon;
-initLightPollutionMap({
+try {
+const pollutionMap=initLightPollutionMap({
   latitude: state.lat,
   longitude: state.lon,
   name: state.name,
@@ -204,6 +281,7 @@ initLightPollutionMap({
     state.lon = Number(longitude);
     state.name = `Punto del atlas (${state.lat.toFixed(3)}, ${state.lon.toFixed(3)})`;
     state.lightPollution = data || null;
+    saveNavigationContext({ latitude: state.lat, longitude: state.lon, name: state.name, date: state.date, mode: state.mode });
     $('astro-location').value = state.name;
     $('astro-lat').value = state.lat;
     $('astro-lon').value = state.lon;
@@ -211,4 +289,8 @@ initLightPollutionMap({
     await renderAll();
   }
 });
+if(!pollutionMap && !window.L){const mapHost=$('lp-atlas-map');if(mapHost)mapHost.innerHTML='<div class="component-error" role="alert">El mapa del atlas no se ha podido cargar porque Leaflet no está disponible. Comprueba la conexión y recarga la página.</div>'; }
+} catch(error) {
+  const map = $('lp-atlas-map'); if(map) map.innerHTML = `<div class="component-error">No se pudo iniciar el mapa del atlas. Comprueba la conexión a Leaflet. ${escapeHtml(error.message)}</div>`;
+}
 renderAll();

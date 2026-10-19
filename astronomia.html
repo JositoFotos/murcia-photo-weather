@@ -8,31 +8,31 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="app-starting">
 <header class="topbar">
   <div><span class="eyebrow">MURCIA · PHOTO WEATHER</span><h1>Murcia Photo Weather Planner</h1><p>Planificación astronómica para fotografía nocturna.</p></div>
   <nav class="main-nav" aria-label="Secciones"><a class="nav-link" id="photo-link" href="index.html">📸 Fotografía</a><a class="nav-link active" href="astronomia.html">🌌 Astronomía</a><a class="nav-link" id="recommended-link" href="recomendados.html">⭐ Recomendados</a></nav>
 </header>
 <main class="astro-page-shell">
   <section class="card astro-toolbar" aria-label="Contexto de consulta">
-    <label>Localización<input id="astro-location" type="text" value="Murcia" aria-label="Localización astronómica"></label>
-    <label>Latitud<input id="astro-lat" type="number" step="0.00001" value="37.983" aria-label="Latitud"></label>
-    <label>Longitud<input id="astro-lon" type="number" step="0.00001" value="-1.129" aria-label="Longitud"></label>
-    <label>Fecha<input id="astro-date" type="date" aria-label="Fecha astronómica"></label>
+    <label for="astro-location">Localización<input id="astro-location" type="text" value="Murcia" aria-label="Nombre de la localización astronómica"></label>
+    <label for="astro-lat">Latitud<input id="astro-lat" type="number" min="-90" max="90" step="0.00001" value="37.983" aria-label="Latitud (-90 a 90)"></label>
+    <label for="astro-lon">Longitud<input id="astro-lon" type="number" min="-180" max="180" step="0.00001" value="-1.129" aria-label="Longitud (-180 a 180)"></label>
+    <label for="astro-date">Fecha<input id="astro-date" type="date" aria-label="Fecha astronómica"></label>
     <button id="astro-update" type="button" class="primary">Actualizar</button>
   </section>
   <section class="astro-content">
       <section class="astro-hero">
-        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Astronomía</span><h2>🌙 Luna</h2></div></div><div id="moon-info" class="astro-panel"></div></article>
-        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Fotografía nocturna</span><h2>🌌 Vía Láctea</h2></div></div><div id="milky-way-info" class="astro-panel"></div></article>
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Astronomía</span><h2>🌙 Luna</h2></div></div><div id="moon-info" class="astro-panel" aria-live="polite" aria-busy="true"><div class="panel-skeleton" role="status"><span class="skeleton md"></span><span class="skeleton sm"></span><span class="skeleton lg"></span></div></div></article>
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Fotografía nocturna</span><h2>🌌 Vía Láctea</h2></div></div><div id="milky-way-info" class="astro-panel" aria-live="polite" aria-busy="true"><div class="panel-skeleton" role="status"><span class="skeleton md"></span><span class="skeleton sm"></span><span class="skeleton lg"></span></div></div></article>
       </section>
       <section class="astro-secondary-grid">
-        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Condiciones nocturnas</span><h2>🌌 Esta noche</h2><p class="muted">Cruce de astronomía y previsión meteorológica para la sesión nocturna.</p></div></div><div id="night-conditions" class="astro-panel"></div></article>
-        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Calendario lunar</span><h2>🌓 Mes lunar</h2><p class="muted">Fase e iluminación para cada día del mes seleccionado.</p></div></div><div id="lunar-calendar" class="lunar-calendar"></div></article>
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Condiciones nocturnas</span><h2>🌌 Esta noche</h2><p class="muted">Cruce de astronomía y previsión meteorológica para la sesión nocturna.</p></div></div><div id="night-conditions" class="astro-panel" aria-live="polite" aria-busy="true"><div class="panel-skeleton" role="status"><span class="skeleton md"></span><span class="skeleton sm"></span><span class="skeleton lg"></span></div></div></article>
+        <article class="card astro-card"><div class="card-head"><div><span class="section-kicker">Calendario lunar</span><h2>🌓 Mes lunar</h2><p class="muted">Fase e iluminación para cada día del mes seleccionado.</p></div></div><div id="lunar-calendar" class="lunar-calendar" aria-live="polite" aria-busy="true"><div class="panel-skeleton" role="status"><span class="skeleton md"></span><span class="skeleton lg"></span></div></div></article>
       </section>
       <section class="card light-pollution-card">
         <div class="card-head"><div><span class="section-kicker">Atlas mundial 2025</span><h2>🌃 Contaminación lumínica</h2><p class="muted">Estimación del brillo artificial del cielo para las coordenadas seleccionadas.</p></div><a class="lp-source-link" href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener noreferrer">Ver atlas ↗</a></div>
-        <div id="light-pollution-info" class="light-pollution-info" aria-live="polite"><div class="lp-loading"><span class="skeleton lg"></span><span>Consultando el atlas de contaminación lumínica…</span></div></div>
+        <div id="light-pollution-info" class="light-pollution-info" aria-live="polite" aria-busy="true"><div class="lp-loading" role="status"><span class="skeleton lg"></span><span>Consultando el atlas de contaminación lumínica…</span></div></div>
         <section class="lp-map-section" aria-labelledby="lp-map-title">
           <div class="lp-map-heading">
             <div><h3 id="lp-map-title">🗺️ Explorar zonas más oscuras</h3><p class="muted">El color del atlas permite comparar el entorno. Acerca el mapa y pulsa en otro punto para consultar su estimación.</p></div>
@@ -52,11 +52,11 @@
         </section>
         <p class="lp-attribution">Datos: David Lorenz, <a href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener noreferrer">World Atlas of Artificial Night Sky Brightness 2025</a>. Uso autorizado para este sitio no comercial.</p>
       </section>
-      <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list"></div></section>
+      <section class="card"><div class="card-head"><div><span class="section-kicker">Eventos</span><h2>🔭 Eventos astronómicos</h2><p class="muted">Fases lunares y referencias astronómicas relevantes alrededor de la fecha seleccionada.</p></div></div><div id="astro-events" class="astro-event-list" aria-live="polite" aria-busy="true"><div class="panel-skeleton" role="status"><span class="skeleton md"></span><span class="skeleton sm"></span><span class="skeleton sm"></span></div></div></section>
       <section class="card astro-back"><strong>📸 ¿Quieres comprobar el tiempo?</strong><p class="astro-page-note">Vuelve a Fotografía para consultar AEMET, nubosidad, viento, lluvia y ventanas de luz manteniendo la misma localización y fecha.</p><div class="astro-subnav"><a id="back-photo" href="index.html">← Volver a Fotografía</a><a id="back-recommended" href="recomendados.html">⭐ Ver Recomendados</a></div></section>
   </section>
 </main>
-<footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="astro-status">Calculando…</span></footer>
+<footer class="footer"><span>AEMET OpenData + SunCalc + Leaflet + Chart.js</span><span id="astro-status" role="status" aria-live="polite">Preparando cálculos astronómicos…</span></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
 <script type="module" src="js/astronomy-page.js"></script>

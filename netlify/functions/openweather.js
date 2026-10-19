@@ -14,6 +14,16 @@ function response(statusCode, body, cacheControl = 'no-store') {
   };
 }
 
+async function fetchTextWithTimeout(url, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+    const text = await response.text();
+    return { response, text };
+  } finally { clearTimeout(timer); }
+}
+
 function parseCoordinate(value, min, max) {
   const n = Number(value);
   return Number.isFinite(n) && n >= min && n <= max ? n : null;
@@ -38,8 +48,7 @@ exports.handler = async (event) => {
     url.searchParams.set('units', 'metric');
     url.searchParams.set('lang', 'es');
 
-    const upstream = await fetch(url, { headers: { Accept: 'application/json' } });
-    const text = await upstream.text();
+    const { response:upstream, text } = await fetchTextWithTimeout(url);
     let data;
     try { data = text ? JSON.parse(text) : null; }
     catch { return response(502, { error: 'OpenWeather devolvió una respuesta no JSON.' }); }
@@ -47,12 +56,12 @@ exports.handler = async (event) => {
     if (!upstream.ok) {
       return response(upstream.status || 502, {
         error: data?.message || `OpenWeather respondió con HTTP ${upstream.status}.`
-      });
+      }, upstream.status === 429 ? 'public, max-age=0, s-maxage=0' : 'no-store');
     }
     if (!data || !Array.isArray(data.list)) return response(502, { error: 'OpenWeather no devolvió la previsión esperada.' });
 
     return response(200, data, 'public, max-age=300, s-maxage=300');
   } catch (error) {
-    return response(502, { error: `No se pudo consultar OpenWeather: ${error?.message || 'error de red'}` });
+    return response(error?.name === 'AbortError' ? 504 : 502, { error: error?.name === 'AbortError' ? 'Tiempo de espera agotado consultando OpenWeather.' : `No se pudo consultar OpenWeather: ${error?.message || 'error de red'}` });
   }
 };

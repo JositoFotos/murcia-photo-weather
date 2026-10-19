@@ -14,7 +14,7 @@
 <body>
 <header class="topbar">
   <div><span class="eyebrow">MURCIA · PHOTO WEATHER</span><h1>Murcia Photo Weather Planner</h1><p>Encuentra dónde y cuándo merece más la pena fotografiar.</p></div>
-  <nav class="main-nav" aria-label="Secciones"><a class="nav-link" id="photo-link" href="index.html">📸 Fotografía</a><a class="nav-link" id="astronomy-link" href="astronomia.html">🌌 Astronomía</a><a class="nav-link active" href="recomendados.html">⭐ Recomendados</a></nav>
+  <nav class="main-nav" aria-label="Secciones"><a class="nav-link" id="photo-link" href="index.html">📸 Fotografía</a><a class="nav-link" id="astronomy-link" href="astronomia.html">🌌 Astronomía</a><a class="nav-link active" href="recomendados.html" aria-current="page">⭐ Recomendados</a></nav>
 </header>
 <main class="shell recommended-page">
   <section class="card recommended-toolbar">
@@ -35,11 +35,11 @@
   </section>
 
   <section class="recommended-layout">
-    <article class="card recommended-map-card"><div class="card-head"><div><span class="section-kicker">Mapa de oportunidades</span><h2>Murcia fotográfica</h2></div><span id="recommended-status" class="source-tag">Pendiente</span></div><div id="recommended-map" class="recommended-map"></div><div class="map-help muted">El color indica el índice. Pulsa una localización para ver sus detalles.</div></article>
-    <article class="card recommended-ranking-card"><div class="card-head"><div><span class="section-kicker">Ranking</span><h2>Localizaciones recomendadas</h2></div></div><div id="recommended-ranking" class="recommended-ranking"></div></article>
+    <article class="card recommended-map-card"><div class="card-head"><div><span class="section-kicker">Mapa de oportunidades</span><h2>Murcia fotográfica</h2></div><span id="recommended-status" class="source-tag">Pendiente</span></div><div id="recommended-map" class="recommended-map" role="application" aria-label="Mapa interactivo de recomendaciones fotográficas" tabindex="0"></div><div class="map-help muted">El color indica el índice. Pulsa una localización para seleccionarla; las recomendaciones se calculan solo al pulsar «Buscar oportunidades».</div></article>
+    <article class="card recommended-ranking-card"><div class="card-head"><div><span class="section-kicker">Ranking</span><h2>Localizaciones recomendadas</h2></div></div><div id="recommended-ranking" class="recommended-ranking" aria-live="polite" aria-busy="false"><div class="empty">Aún no hay resultados. Elige fecha, modo y momento y pulsa <strong>Buscar oportunidades</strong>.</div></div></article>
   </section>
 </main>
-<footer class="footer"><span>AEMET OpenData + OpenWeather + SunCalc + Leaflet</span><span id="recommended-app-status" data-state="idle">Inicializando…</span></footer>
+<footer class="footer"><span>AEMET OpenData + OpenWeather + SunCalc + Leaflet</span><span id="recommended-app-status" data-state="idle" role="status" aria-live="polite">Configura la sesión y pulsa Buscar oportunidades.</span></footer>
 <div id="toast" class="toast"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
