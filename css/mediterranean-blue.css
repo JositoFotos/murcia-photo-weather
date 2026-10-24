@@ -1,0 +1,253 @@
+/* Murcia Photo Weather Planner — Paleta Azul Mediterráneo v32
+   Tema común para Fotografía, Astronomía y Recomendados.
+   Los fondos de mapa de OSM conservan sus colores cartográficos propios. */
+:root {
+  --bg: #0F172A;
+  --panel: #1E293B;
+  --panel2: #26364A;
+  --text: #F8FAFC;
+  --muted: #94A3B8;
+  --line: #334155;
+  --accent: #38BDF8;
+  --accent-strong: #2563EB;
+  --good: #34D399;
+  --warn: #F59E0B;
+  --bad: #FB7185;
+  --shadow: 0 12px 30px rgba(0, 0, 0, .24);
+  color-scheme: dark;
+}
+html { background: var(--bg) !important; color-scheme: dark; }
+body {
+  color: var(--text) !important;
+  background: radial-gradient(ellipse at 14% 0%, #172942 0%, #0F172A 48%, #0B1220 100%) !important;
+}
+
+/* Shared header and navigation */
+.topbar {
+  color: var(--text) !important;
+  background: linear-gradient(105deg, #142640 0%, #172B45 55%, #1B304B 100%) !important;
+  border-bottom: 1px solid var(--line) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.2) !important;
+}
+.topbar h1 { color: var(--text) !important; }
+.topbar p, .eyebrow { color: var(--muted) !important; }
+.eyebrow, .section-kicker { color: #7DD3FC !important; }
+.main-nav .nav-link {
+  background: #1E293B !important;
+  color: #CBD5E1 !important;
+  border-color: #334155 !important;
+}
+.main-nav .nav-link:hover { background: #26364A !important; border-color: #47708F !important; color: #F8FAFC !important; }
+.main-nav .nav-link.active { background: #2563EB !important; color: #FFFFFF !important; border-color: #3B82F6 !important; box-shadow: 0 3px 12px rgba(37,99,235,.25) !important; }
+
+/* Cards: slightly lighter than the background, subtle borders. */
+.card, .toolbar, .mode-strip, .astro-toolbar, .recommended-toolbar,
+.recommended-map-card, .recommended-ranking-card, .light-pollution-card {
+  color: var(--text) !important;
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: var(--shadow) !important;
+}
+.card:hover { border-color: #405773 !important; }
+.card h2, .card h3, .card h4 { color: #F1F5F9 !important; }
+.muted, .field-help, .coord-line, .chart-help, .openweather-note,
+.astro-note, .astro-muted, .empty, .footer, .map-help,
+.recommended-row small, .lp-note, .lp-attribution,
+.sun-timeline-axis, .sun-timeline-legend, .sun-summary-row { color: var(--muted) !important; }
+.source-tag { background: #26364A !important; color: #BAE6FD !important; border: 1px solid #3B526D !important; }
+
+/* Inputs, dropdowns, dates and controls */
+button, input, select, textarea { color-scheme: dark; }
+.top-actions button, .mode-buttons button, .export-actions button,
+#clear-history, #add-favorite, .date-tab, .lunar-day,
+.recommended-page .leaflet-popup-content button {
+  color: #E2E8F0 !important;
+  background: #26364A !important;
+  border: 1px solid #40536B !important;
+  border-radius: 8px !important;
+  transition: all .2s ease;
+}
+.top-actions button:hover, .mode-buttons button:hover, .export-actions button:hover,
+#clear-history:hover, #add-favorite:hover, .date-tab:hover, .lunar-day:hover {
+  background: #30445D !important; border-color: #5B7C9D !important; color: #FFFFFF !important;
+}
+.primary, .top-actions .primary, .export-actions button.primary,
+button.primary, .recommended-page .leaflet-popup-content button.primary {
+  background: #38BDF8 !important;
+  border-color: #38BDF8 !important;
+  color: #082F49 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(56,189,248,.16) !important;
+}
+.primary:hover, .top-actions .primary:hover, .export-actions button.primary:hover,
+button.primary:hover { background: #7DD3FC !important; border-color: #7DD3FC !important; color: #082F49 !important; }
+.date-controls input[type=date], .astro-toolbar input, .recommended-controls input,
+.recommended-controls select, .search-box {
+  background: #152238 !important; color: #F8FAFC !important; border-color: #3A4D66 !important;
+}
+.search-box input { color: #F8FAFC !important; }
+.search-box input::placeholder { color: #94A3B8 !important; }
+.search-box:focus-within, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  border-color: #38BDF8 !important; box-shadow: 0 0 0 3px rgba(56,189,248,.16) !important; outline: none;
+}
+.suggestions { background: #1E293B !important; border-color: #40536B !important; box-shadow: 0 14px 32px rgba(0,0,0,.36) !important; }
+.suggestion { background: transparent !important; color: #E2E8F0 !important; border-bottom-color: #334155 !important; }
+.suggestion:hover, .suggestion[role="option"]:focus-visible { background: #26364A !important; }
+.date-tab.active, .mode-buttons button.active, .lunar-day.selected {
+  background: rgba(37,99,235,.28) !important; color: #DBEAFE !important; border-color: #38BDF8 !important; box-shadow: inset 0 -2px 0 #38BDF8 !important;
+}
+.mode-strip { background: #19263A !important; }
+.field-help code { background: #26364A !important; color: #BAE6FD !important; }
+
+/* Dashboard score and nested data surfaces */
+.dashboard-hero .card, .hero-sidebar > .card { min-width: 0; }
+.weather-grid > div, .sun-stats div, .weather-summary-card .weather-grid > div,
+.index-mini, .sky-interest, .sky-hour, .astro-stats div, .night-grid div,
+.astro-event, .openweather-slot, .cloud-evolution, .chart-meta span,
+.ranking-row, .history-row, .lp-stat, .lp-technical, .lp-story-effect,
+.lp-story-advice, .lp-map-candidate, .recommended-row, .astro-back,
+.lp-impact, .lp-impact-pill, .best-moment-details span, .best-moment-card {
+  background: #26364A !important; border-color: #3A4D66 !important; color: #E2E8F0 !important;
+}
+.weather-grid span, .sun-stats span, .weather-grid small,
+.openweather-slot-head span, .openweather-condition, .openweather-slot-grid span,
+.cloud-evolution-head span, .cloud-evolution-item span, .astro-stats span,
+.night-grid span, .astro-event small, .astro-event span:not(.astro-event-icon),
+.lp-stat > span, .lp-stat small { color: #A8B8CC !important; }
+.weather-grid strong, .sun-stats strong, .openweather-slot-grid b,
+.astro-stats strong, .night-grid strong, .lp-stat > strong,
+.cloud-evolution-item strong, .openweather-slot-head strong { color: #F8FAFC !important; }
+.openweather-slot-grid .ow-cloudiness { background: rgba(56,189,248,.14) !important; border-color: #38BDF8 !important; }
+.openweather-slot-grid .ow-cloudiness span { color: #BAE6FD !important; }
+.openweather-slot-grid .ow-cloudiness b { color: #F8FAFC !important; }
+.cloud-evolution { background: #18263B !important; }
+.best-moment-card { background: linear-gradient(145deg, #243750, #1E293B) !important; border-color: #3B6385 !important; }
+.best-moment-score { color: #7DD3FC !important; }
+.best-moment-details span { background: rgba(37,99,235,.22) !important; color: #DBEAFE !important; border-color: #3B82F6 !important; }
+.score-card { background: linear-gradient(145deg, #24384F 0%, #1E293B 72%) !important; border-color: #3B5875 !important; }
+.score-card .score { color: #F8FAFC !important; }
+.score-card .score-ring { border-color: #334155 !important; border-top-color: #34D399 !important; border-right-color: #38BDF8 !important; box-shadow: 0 3px 15px rgba(56,189,248,.12) !important; }
+.score-card .score-label { background: rgba(56,189,248,.13) !important; border-color: #3B6385 !important; color: #BAE6FD !important; }
+.index-mini { color: #CBD5E1 !important; }
+.index-mini strong { color: #F8FAFC !important; }
+.factor-columns h3 { color: #CBD5E1 !important; }
+.factor-columns li { color: #D5E1EE !important; }
+.recommendation { background: rgba(56,189,248,.09) !important; color: #E0F2FE !important; border-left-color: #38BDF8 !important; }
+.recommendation span { color: #BAE6FD !important; }
+.recommendation p { color: #F1F5F9 !important; }
+
+/* Keep amber only for solar golden-hour semantics / warning signals. */
+.sun-segment.golden, .legend-swatch.golden, .sun-marker.golden-mark span { background: #F59E0B !important; }
+.sun-segment.blue, .legend-swatch.blue, .sun-marker.blue-mark span { background: #1E3A8A !important; }
+.sun-segment.night, .legend-swatch.night { background: #09111F !important; }
+.sun-marker span { background: #E2E8F0 !important; color: #0F172A !important; }
+.sun-timeline-track { border-color: #334155 !important; }
+.quick-shortcut-icon { background: rgba(56,189,248,.14) !important; color: #BAE6FD !important; }
+.quick-card-link, .hero-quick-card .nav-link {
+  background: rgba(37,99,235,.18) !important; border-color: #3B6385 !important; color: #DBEAFE !important;
+}
+.quick-card-link:hover, .hero-quick-card .nav-link:hover { background: rgba(56,189,248,.22) !important; }
+
+/* Astronomy and light pollution */
+.astro-main strong, .lp-story-title, .lp-story-effect strong, .lp-story-advice strong,
+.lp-technical summary, .lp-map-heading h3 { color: #F8FAFC !important; }
+.astro-muted, .astro-note, .lp-story-kicker, .lp-story-effect p, .lp-story-advice p,
+.lp-note, .lp-attribution { color: #A8B8CC !important; }
+.night-score { background: linear-gradient(125deg, #1B3546, #1E293B) !important; border-color: #315A6D !important; }
+.night-score span { color: #A7D7E8 !important; }
+.night-score strong, .night-score-label { color: #6EE7B7 !important; }
+.lunar-day { color: #E2E8F0 !important; }
+.lunar-day span, .lunar-day small { color: #A8B8CC !important; }
+.astro-back { background: #26364A !important; }
+.astro-subnav a, .lp-attribution a, .lp-source-link { color: #7DD3FC !important; }
+.astro-subnav a:hover, .lp-attribution a:hover, .lp-source-link:hover { color: #BAE6FD !important; }
+.light-pollution-card { background: #1E293B !important; }
+.lp-story { background: linear-gradient(145deg, #26364A 0%, #1E293B 100%) !important; border-color: #3A4D66 !important; }
+.lp-impact-pill { background: rgba(148,163,184,.12) !important; }
+.lp-story-explanation { color: #E2E8F0 !important; }
+.lp-story-effect, .lp-story-advice { background: rgba(15,23,42,.48) !important; border-color: #3A4D66 !important; }
+.lp-technical { background: rgba(15,23,42,.38) !important; border-color: #334155 !important; }
+.lp-technical summary:hover { color: #7DD3FC !important; }
+.lp-stat { background: #26364A !important; border-color: #3A4D66 !important; }
+.lp-index-stat > strong { color: #7DD3FC !important; }
+.lp-error, .api-error, .component-error { background: rgba(127,29,29,.24) !important; border-color: rgba(248,113,113,.48) !important; color: #FECACA !important; }
+.lp-error p, .api-error p, .component-error p { color: #FDA4AF !important; }
+.lp-map-candidate { background: #26364A !important; }
+.lp-map-candidate-main p { color: #E2E8F0 !important; }
+.lp-map-candidate-main small, .lp-map-candidate-kicker { color: #A8B8CC !important; }
+.lp-map-query-loading { background: #18263B !important; }
+
+/* Recommended: controls and ranking use the same blue system. */
+.recommended-controls label, .toolbar label, .date-wrap > span, .astro-toolbar label { color: #A8B8CC !important; }
+.recommended-controls input, .recommended-controls select { background: #152238 !important; color: #F8FAFC !important; border-color: #3A4D66 !important; }
+.recommended-best { background: linear-gradient(120deg, #1B3546, #1E293B) !important; border-color: #315A6D !important; }
+.recommended-row { background: #26364A !important; color: #F1F5F9 !important; border-color: #3A4D66 !important; }
+.recommended-row:hover { background: #30445D !important; border-color: #38BDF8 !important; }
+.recommended-row > strong { color: #7DD3FC !important; }
+.recommended-data-note { color: #BAE6FD !important; background: rgba(56,189,248,.10) !important; border-left-color: #38BDF8 !important; }
+.ranking-row:hover, .history-row:hover { background: #30445D !important; border-color: #38BDF8 !important; }
+
+/* Loading and errors should blend with the dark theme while remaining distinct. */
+.skeleton, .panel-skeleton .skeleton, .ow-skeleton-card .skeleton {
+  background: linear-gradient(100deg, #26364A 20%, #3A4D66 38%, #26364A 58%) !important;
+  background-size: 220% 100% !important;
+}
+.chart-loading { background: rgba(15,23,42,.96) !important; border-color: #334155 !important; color: #CBD5E1 !important; }
+.ow-skeleton-card { background: #1E293B !important; border-color: #334155 !important; }
+.api-error button, .component-error button, .lp-error button { color: #082F49 !important; }
+#app-status[data-state="error"], #recommended-app-status[data-state="error"] { color: #FDA4AF !important; }
+#app-status[data-state="warning"], #recommended-app-status[data-state="warning"] { color: #FCD34D !important; }
+#app-status[data-state="ready"], #recommended-app-status[data-state="ready"] { color: #6EE7B7 !important; }
+.toast { background: #1E3A5F !important; color: #F8FAFC !important; border: 1px solid #3B6385 !important; }
+.footer { color: #94A3B8 !important; }
+
+/* Leaflet chrome follows the app theme. OSM map tiles retain their native map colors. */
+.leaflet-control-layers, .leaflet-control-layers-expanded,
+#lp-atlas-map .leaflet-control-layers {
+  background: rgba(30,41,59,.96) !important; color: #E2E8F0 !important; border: 1px solid #475569 !important;
+}
+.leaflet-control-layers label { color: #E2E8F0 !important; }
+.leaflet-control-attribution { background: rgba(15,23,42,.88) !important; color: #CBD5E1 !important; }
+.leaflet-control-attribution a { color: #7DD3FC !important; }
+.leaflet-control-zoom a, .leaflet-bar a {
+  background: #1E293B !important; color: #E2E8F0 !important; border-bottom-color: #334155 !important;
+}
+.leaflet-control-zoom a:hover, .leaflet-bar a:hover { background: #26364A !important; color: #7DD3FC !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #1E293B !important; color: #F8FAFC !important; }
+.leaflet-popup-content { color: #E2E8F0 !important; }
+.leaflet-popup-content button { background: #38BDF8 !important; color: #082F49 !important; border-color: #38BDF8 !important; }
+
+/* Accessible focus rings and contrast. */
+a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid #38BDF8 !important; outline-offset: 2px;
+}
+[disabled], button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Keep layout breakpoints from the existing visual refresh. */
+@media (max-width: 680px) {
+  .topbar { background: linear-gradient(105deg, #142640, #172B45) !important; }
+  .main-nav .nav-link { font-size: .72rem; }
+  .card { background: #1E293B !important; }
+}
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  .topbar, .card { background: #fff !important; color: #111 !important; }
+}
+
+/* Additional surfaces used by the current data panels. */
+.map-cta { background: #26364A !important; color: #CBD5E1 !important; border-left-color: #38BDF8 !important; }
+.map-cta strong { color: #F8FAFC !important; }
+.sky-interest { background: #26364A !important; border-color: #3A4D66 !important; }
+.sky-interest span, .sky-kicker { color: #A8B8CC !important; }
+.sky-interest b { color: #7DD3FC !important; }
+.sky-badge { background: #26364A !important; border-color: #40536B !important; color: #CBD5E1 !important; }
+.sky-badge.accent { background: rgba(37,99,235,.18) !important; border-color: #3B6385 !important; color: #BAE6FD !important; }
+.sky-hour { background: #26364A !important; border-color: #3A4D66 !important; }
+.sky-hour small { color: #CBD5E1 !important; }
+.sun-summary-row strong { color: #F8FAFC !important; }
+.chart-meta span { color: #CBD5E1 !important; background: #26364A !important; border-color: #3A4D66 !important; }
+.chart-wrap, .chart-card { min-width: 0; }
+.lp-impact { background: #18263B !important; border-color: #3A4D66 !important; }
+.lp-meter { background: #0B1220 !important; }
+.aemet-help { color: #FDE68A !important; background: rgba(245,158,11,.10) !important; border-color: rgba(245,158,11,.38) !important; }
+.sun-marker.blue-mark span { color: #F8FAFC !important; }

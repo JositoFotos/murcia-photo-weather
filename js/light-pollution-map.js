@@ -65,7 +65,7 @@ export function initLightPollutionMap({ latitude, longitude, name = 'Localizaci�
   window.L.control.scale({ imperial: false, maxWidth: 120 }).addTo(map);
 
   currentMarker = window.L.circleMarker([lat, lon], {
-    radius: 8, color: '#0b1220', weight: 3, fillColor: '#F59E0B', fillOpacity: 1
+    radius: 8, color: '#0F172A', weight: 3, fillColor: '#38BDF8', fillOpacity: 1
   }).addTo(map).bindPopup(`<strong>${escapeHtml(name)}</strong><br>Ubicación actual`);
 
   const legend = window.L.control({ position: 'bottomright' });
@@ -98,7 +98,7 @@ export function updateLightPollutionMap(latitude, longitude, name = 'Localizaci�
     candidateMarker = null;
   }
   if (!currentMarker) {
-    currentMarker = window.L.circleMarker([lat, lon], { radius: 8, color: '#0b1220', weight: 3, fillColor: '#F59E0B', fillOpacity: 1 }).addTo(map);
+    currentMarker = window.L.circleMarker([lat, lon], { radius: 8, color: '#0F172A', weight: 3, fillColor: '#38BDF8', fillOpacity: 1 }).addTo(map);
   } else currentMarker.setLatLng([lat, lon]);
   currentMarker.bindPopup(`<strong>${escapeHtml(selected.name)}</strong><br>${selected.data ? `Zona ${escapeHtml(selected.data.lpZone)} · LP ${fmt(selected.data.lpIndex, 2)}×` : 'Ubicación actual'}`);
   if (pan && moved) map.panTo([lat, lon], { animate: true });

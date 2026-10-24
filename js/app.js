@@ -68,7 +68,7 @@ function bindUI(){
   window.addEventListener('mpwp:map-location', e=>selectCoordinate(e.detail.latitude,e.detail.longitude,'Coordenadas seleccionadas'));
   // Refresh the share-context immediately before navigation so date/mode/location
   // selected on Photography are transferred even if a weather request is still pending.
-  ['astronomy-link','open-astronomy','recommended-link'].forEach(id=>{
+  ['astronomy-link','open-astronomy','recommended-link','open-recommended'].forEach(id=>{
     $(id)?.addEventListener('click',()=>updateAstronomyLink());
   });
 }
@@ -399,9 +399,9 @@ function renderMeteogram(){
     data:{
       labels,
       datasets:[
-        {label:'Temperatura',data:hourly.map(x=>x.temperature),yAxisID:'yTemp',borderWidth:2.5,pointRadius:3,tension:.25,spanGaps:true},
-        {label:'Prob. lluvia',data:hourly.map(x=>x.rainProbability),yAxisID:'yPercent',borderWidth:2,pointRadius:2,tension:.25,spanGaps:true},
-        {label:'Viento',data:hourly.map(x=>x.wind?.speed),yAxisID:'yWind',borderWidth:2,pointRadius:2,tension:.25,spanGaps:true}
+        {label:'Temperatura',data:hourly.map(x=>x.temperature),yAxisID:'yTemp',borderColor:'#38BDF8',backgroundColor:'rgba(56,189,248,.12)',pointBackgroundColor:'#38BDF8',pointBorderColor:'#0F172A',borderWidth:2.5,pointRadius:3,tension:.25,spanGaps:true},
+        {label:'Prob. lluvia',data:hourly.map(x=>x.rainProbability),yAxisID:'yPercent',borderColor:'#34D399',backgroundColor:'rgba(52,211,153,.10)',pointBackgroundColor:'#34D399',pointBorderColor:'#0F172A',borderWidth:2,pointRadius:2,tension:.25,spanGaps:true},
+        {label:'Viento',data:hourly.map(x=>x.wind?.speed),yAxisID:'yWind',borderColor:'#A78BFA',backgroundColor:'rgba(167,139,250,.10)',pointBackgroundColor:'#A78BFA',pointBorderColor:'#0F172A',borderWidth:2,pointRadius:2,tension:.25,spanGaps:true}
       ]
     },
     options:{
@@ -410,8 +410,8 @@ function renderMeteogram(){
       layout:{padding:{bottom:12,left:4,right:4}},
       interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:{display:true,position:'top',labels:{usePointStyle:true,padding:16}},
-        tooltip:{callbacks:{
+        legend:{display:true,position:'top',labels:{usePointStyle:true,padding:16,color:'#CBD5E1'}},
+        tooltip:{backgroundColor:'#1E293B',titleColor:'#F8FAFC',bodyColor:'#E2E8F0',borderColor:'#475569',borderWidth:1,callbacks:{
           title:(items)=>items.length?`Hora ${items[0].label} h`:'',
           label:(ctx)=>{
             const v=ctx.parsed.y;
@@ -424,14 +424,14 @@ function renderMeteogram(){
       scales:{
         x:{
           type:'category',offset:true,
-          title:{display:true,text:'Hora local (h)',padding:{top:10}},
-          ticks:{display:true,autoSkip:true,maxTicksLimit:12,maxRotation:0,minRotation:0,padding:8,
+          title:{display:true,text:'Hora local (h)',color:'#CBD5E1',padding:{top:10}},
+          ticks:{color:'#94A3B8',display:true,autoSkip:true,maxTicksLimit:12,maxRotation:0,minRotation:0,padding:8,
             callback:(value,index)=>labels[index] ?? ''},
           grid:{display:false}
         },
-        yTemp:{position:'left',title:{display:true,text:'Temperatura (°C)'},suggestedMin:Math.floor(Math.min(...hourly.map(x=>x.temperature).filter(Number.isFinite),10))-2,suggestedMax:Math.ceil(Math.max(...hourly.map(x=>x.temperature).filter(Number.isFinite),30))+2},
-        yPercent:{position:'right',min:0,max:100,title:{display:true,text:'Probabilidad de lluvia (%)'},grid:{drawOnChartArea:false}},
-        yWind:{position:'right',min:0,suggestedMax:Math.max(20,Math.ceil(Math.max(...hourly.map(x=>x.wind?.speed).filter(Number.isFinite),20)/10)*10),title:{display:true,text:'Viento (km/h)'},grid:{drawOnChartArea:false},display:false}
+        yTemp:{position:'left',title:{display:true,text:'Temperatura (°C)',color:'#CBD5E1'},ticks:{color:'#94A3B8'},grid:{color:'rgba(148,163,184,.14)'},suggestedMin:Math.floor(Math.min(...hourly.map(x=>x.temperature).filter(Number.isFinite),10))-2,suggestedMax:Math.ceil(Math.max(...hourly.map(x=>x.temperature).filter(Number.isFinite),30))+2},
+        yPercent:{position:'right',min:0,max:100,title:{display:true,text:'Probabilidad de lluvia (%)',color:'#CBD5E1'},ticks:{color:'#94A3B8'},grid:{drawOnChartArea:false}},
+        yWind:{position:'right',min:0,suggestedMax:Math.max(20,Math.ceil(Math.max(...hourly.map(x=>x.wind?.speed).filter(Number.isFinite),20)/10)*10),title:{display:true,text:'Viento (km/h)',color:'#CBD5E1'},ticks:{color:'#94A3B8'},grid:{drawOnChartArea:false},display:false}
       }
     }
   });
@@ -491,6 +491,7 @@ function updateAstronomyLink(){
   const astroLink=$('astronomy-link');
   const recommendedLink=$('recommended-link');
   const openLink=$('open-astronomy');
+  const openRecommended=$('open-recommended');
   saveNavigationContext({ latitude:state.location.latitude, longitude:state.location.longitude, date:state.date, name:state.location.name || 'Ubicación seleccionada', mode:state.mode });
   const params=new URLSearchParams({
     lat:String(state.location.latitude),
@@ -503,6 +504,7 @@ function updateAstronomyLink(){
   if(astroLink) astroLink.href=href;
   if(recommendedLink) recommendedLink.href=`recomendados.html?${params.toString()}`;
   if(openLink) openLink.href=href;
+  if(openRecommended) openRecommended.href=`recomendados.html?${params.toString()}`;
 }
 
 function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.location.id,x.score])); renderPhotoLocations(PHOTO_LOCATIONS,scoreMap); renderOpportunitiesMap(ranked); }

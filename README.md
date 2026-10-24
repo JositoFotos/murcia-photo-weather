@@ -12,6 +12,12 @@ No es una aplicación meteorológica genérica. Está orientada a la **planifica
 
 La aplicación es web y no requiere instalación por parte del usuario. Puede utilizarse desde ordenador, tablet o teléfono móvil.
 
+## Diseño visual
+
+La interfaz utiliza un diseño claro inspirado en dashboards fotográficos: cabecera azul suave, tarjetas blancas, tipografía Inter, puntuación destacada, controles compactos y un layout responsive. Inter se carga desde Google Fonts; Leaflet, SunCalc y Chart.js mantienen sus CDN gratuitos.
+
+En escritorio, Fotografía presenta mapa, índice y un resumen lateral de meteorología con accesos a Astronomía y Recomendados. En móvil, los paneles se apilan para mantener textos y controles legibles.
+
 ---
 
 ## ¿Qué puedo hacer con la aplicación?
