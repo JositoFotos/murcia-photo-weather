@@ -8,6 +8,19 @@ function asDate(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function dateAtTimeZone(dateISO, hour = 12, timeZone = 'Europe/Madrid') {
+  const [year, month, day] = dateISO.split('-').map(Number);
+  const target = Date.UTC(year, month - 1, day, hour, 0, 0);
+  let timestamp = target;
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  for (let i = 0; i < 3; i += 1) {
+    const parts = Object.fromEntries(formatter.formatToParts(new Date(timestamp)).filter(p => p.type !== 'literal').map(p => [p.type, Number(p.value)]));
+    const represented = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    timestamp += target - represented;
+  }
+  return new Date(timestamp);
+}
+
 function localDateAtHour(dateISO, hour) {
   const d = new Date(`${dateISO}T00:00:00`);
   d.setHours(d.getHours() + hour);
@@ -49,7 +62,7 @@ export function formatRange(range, timeZone) {
 
 export function getMoonData(dateISO, latitude, longitude, timeZone = 'Europe/Madrid') {
   if (!window.SunCalc) throw new Error('SunCalc no está disponible.');
-  const midday = new Date(`${dateISO}T12:00:00`);
+  const midday = dateAtTimeZone(dateISO, 12, timeZone);
   const illumination = window.SunCalc.getMoonIllumination(midday);
   const positionAtNoon = window.SunCalc.getMoonPosition(midday, latitude, longitude);
   const phase = normalize(illumination.phase);
@@ -202,18 +215,23 @@ function moonPhaseName(phase) {
   if (phase < 0.03 || phase >= 0.97) return 'Luna nueva';
   if (phase < 0.22) return 'Creciente';
   if (phase < 0.28) return 'Cuarto creciente';
-  if (phase < 0.47) return 'Gibosa creciente';
-  if (phase < 0.53) return 'Luna llena';
+  if (phase < 0.48) return 'Gibosa creciente';
+  if (phase < 0.52) return 'Luna llena';
   if (phase < 0.72) return 'Gibosa menguante';
   if (phase < 0.78) return 'Cuarto menguante';
   return 'Menguante';
 }
 
 function moonPhaseIcon(phase) {
+  // SunCalc phase: 0=new, 0.25=first quarter, 0.5=full, 0.75=last quarter.
+  // Keep a narrow full-moon interval so the day before/after cannot share its icon.
   if (phase < 0.03 || phase >= 0.97) return '🌑';
-  if (phase < 0.28) return '🌒';
-  if (phase < 0.53) return '🌔';
-  if (phase < 0.78) return '🌖';
+  if (phase < 0.22) return '🌒';
+  if (phase < 0.28) return '🌓';
+  if (phase < 0.48) return '🌔';
+  if (phase < 0.52) return '🌕';
+  if (phase < 0.72) return '🌖';
+  if (phase < 0.78) return '🌗';
   return '🌘';
 }
 
@@ -252,11 +270,12 @@ function galacticCenterAzimuth(date, latitude, longitude) {
 
 export function calculateLunarCalendar(dateISO, timeZone='Europe/Madrid') {
   if(!window.SunCalc) throw new Error('SunCalc no está disponible.');
-  const base=new Date(`${dateISO}T12:00:00`);
-  const first=new Date(base.getFullYear(),base.getMonth(),1,12,0,0);
-  const daysInMonth=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
+  const [year, month, selectedDay] = dateISO.split('-').map(Number);
+  const daysInMonth=new Date(year,month,0).getDate();
   return Array.from({length:daysInMonth},(_,index)=>{
-    const day=new Date(first.getTime()+index*86400000);
+    // Construct each calendar day independently at local noon; do not add 24h
+    // milliseconds, which can drift across daylight-saving transitions.
+    const day=dateAtTimeZone(`${year}-${String(month).padStart(2,'0')}-${String(index+1).padStart(2,'0')}`,12,timeZone);
     const illumination=window.SunCalc.getMoonIllumination(day);
     const phase=normalize(illumination.phase);
     return {
@@ -267,7 +286,7 @@ export function calculateLunarCalendar(dateISO, timeZone='Europe/Madrid') {
       waxing:illumination.waxing!==false,
       icon:moonPhaseIcon(phase),
       name:moonPhaseName(phase),
-      selected:day.toISOString().slice(0,10)===dateISO,
+      selected:index+1===selectedDay,
       label:new Intl.DateTimeFormat('es-ES',{weekday:'short',timeZone}).format(day)
     };
   });

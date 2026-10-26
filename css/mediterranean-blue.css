@@ -251,3 +251,31 @@ a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .lp-meter { background: #0B1220 !important; }
 .aemet-help { color: #FDE68A !important; background: rgba(245,158,11,.10) !important; border-color: rgba(245,158,11,.38) !important; }
 .sun-marker.blue-mark span { color: #F8FAFC !important; }
+
+
+/* Experimental sunset glow forecast */
+.candilazo-section { margin-top: 1rem; }
+.candilazo-card { border-color: #6B4D37 !important; }
+.candilazo-tag { color: #FED7AA !important; border-color: #9A5B2B !important; background: rgba(124, 45, 18, .25) !important; }
+.candilazo-loading, .candilazo-empty { padding: 1rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
+.candilazo-empty p { margin-bottom: .5rem; }
+.candilazo-score-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.candilazo-kicker, .candilazo-confidence span, .candilazo-window span { display:block; color:var(--muted); font-size:.84rem; }
+.candilazo-score { display:block; color:#FDBA74; font-size:2.7rem; line-height:1.2; }
+.candilazo-score small { font-size:1rem; color:var(--muted); }
+.candilazo-confidence { text-align:right; }
+.candilazo-confidence strong { display:block; font-size:1.25rem; color:#F8FAFC; }
+.candilazo-confidence small, .candilazo-window small { display:block; color:var(--muted); margin-top:.25rem; }
+.candilazo-window { margin-top:1rem; padding:1rem; border-radius:12px; background:rgba(180,83,9,.12); border:1px solid rgba(251,146,60,.3); }
+.candilazo-window strong { display:block; color:#FDBA74; margin:.2rem 0; }
+.candilazo-factors { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-top:1rem; }
+.candilazo-factors h3 { font-size:1rem; margin:.25rem 0 .5rem; }
+.candilazo-factors ul { padding-left:1.2rem; margin:.25rem 0; color:var(--muted); }
+.candilazo-factors li { margin:.35rem 0; }
+.candilazo-data-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:.6rem; margin-top:1rem; }
+.candilazo-data-grid span { display:flex; justify-content:space-between; gap:.5rem; padding:.7rem; background:#152238; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:.85rem; }
+.candilazo-data-grid b { color:var(--text); white-space:nowrap; }
+.candilazo-disclaimer { margin-top:1rem; color:var(--muted); font-size:.82rem; line-height:1.55; }
+.project-credits { flex-basis:100%; display:flex; flex-direction:column; gap:.35rem; padding-top:.6rem; border-top:1px solid var(--line); font-size:.78rem; line-height:1.5; }
+.project-credits a, .candilazo-disclaimer a { color:#7DD3FC; }
+@media (max-width:600px) { .candilazo-factors { grid-template-columns:1fr; } .candilazo-confidence { text-align:left; } }

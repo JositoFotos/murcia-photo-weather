@@ -182,7 +182,7 @@ function render(){
   }
 
   const calendar=calculateLunarCalendar(state.date,CONFIG.DEFAULT_TIME_ZONE);
-  $('lunar-calendar').innerHTML=calendar.map(day=>`<button type="button" class="lunar-day ${day.selected?'selected':''}" data-lunar-date="${day.date.toISOString().slice(0,10)}" title="${day.name} · ${day.illuminationPercent}% iluminada"><span>${day.label.slice(0,2)}</span><strong>${day.day}</strong><b>${day.icon}</b><small>${day.illuminationPercent}%</small></button>`).join('');
+  $('lunar-calendar').innerHTML=calendar.map(day=>{const dayISO=`${state.date.slice(0,7)}-${String(day.day).padStart(2,'0')}`;return `<button type="button" class="lunar-day ${day.selected?'selected':''}" data-lunar-date="${dayISO}" aria-label="${day.day} ${day.label}: ${day.name}, ${day.illuminationPercent}% iluminada" title="${day.name} · ${day.illuminationPercent}% iluminada"><span>${day.label.slice(0,2)}</span><strong>${day.day}</strong><b aria-hidden="true">${day.icon}</b><small>${day.illuminationPercent}%</small></button>`;}).join('');
   $('lunar-calendar').querySelectorAll('[data-lunar-date]').forEach(btn=>btn.addEventListener('click',()=>{state.date=btn.dataset.lunarDate;renderAll();}));
 
   $('astro-events').innerHTML=state.events.length?state.events.map(evt=>`<div class="astro-event"><span class="astro-event-icon">${evt.icon}</span><div><strong>${evt.title}</strong><span>${evt.detail}</span></div></div>`).join(''):'<div class="empty">No hay eventos destacados calculados para esta fecha.</div>';

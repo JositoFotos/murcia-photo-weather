@@ -490,3 +490,13 @@ Se ha eliminado una declaración duplicada de `escapeHtml` en `js/astronomy-page
 ## Persistencia del punto seleccionado (v29)
 
 La localización elegida en el mapa del atlas de contaminación lumínica se guarda como contexto de navegación al pulsar **Usar este punto en Astronomía**. Al abrir Recomendados, aunque todavía no se ejecute una búsqueda, los enlaces a Fotografía y Astronomía conservan las coordenadas, el nombre, la fecha y el modo fotográfico. El contexto se transmite mediante los parámetros de URL y se conserva además en `sessionStorage` como respaldo dentro de la misma pestaña. Si no hay coordenadas válidas, la aplicación nunca las convierte accidentalmente en `0,0`.
+
+
+## v33 — Azul Mediterráneo · calendario lunar y candilazo experimental
+
+- Calendario lunar: iconos separados para gibosa creciente, luna llena y gibosa menguante; el disco lleno usa 🌕. Las fechas del calendario se construyen al mediodía de `Europe/Madrid` para evitar desajustes de día por la zona horaria del navegador y cambios de horario estacional.
+- Fotografía: nueva tarjeta **Predicción de arrebol (Candilazo)** con datos horarios de Open-Meteo, nubosidad por capas, visibilidad y precipitación. La puntuación es una heurística experimental de 0–100, no una probabilidad validada; la confianza de datos se presenta por separado.
+- Créditos: se añaden agradecimientos a Pepe Baleriola y al autor jositofotos, además de las atribuciones de las fuentes de datos.
+- Open-Meteo: la API gratuita está limitada a usos no comerciales, con límites de frecuencia y atribución CC BY 4.0. Revisa sus condiciones vigentes antes de usarla en un sitio comercial: https://open-meteo.com/en/terms.
+
+Pruebas de esta entrega: sintaxis de los módulos JavaScript, parseo HTML y pruebas aisladas de las fases lunares y de la heurística con datos simulados. No se ha verificado la API meteorológica real ni se ha desplegado el sitio.
