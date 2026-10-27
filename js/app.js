@@ -12,9 +12,8 @@ import { exportCSV, exportJSON, copySummary, generateShareUrl } from './export.j
 import { exploreMurcia, rankLocations } from './opportunities.js';
 import { getOpenWeatherForecast, getOpenWeatherForDate, summarizeOpenWeather } from './openweather.js';
 import { getNavigationContextFromUrl, getSavedNavigationContext, saveNavigationContext } from './navigation-context.js';
-import { getCandilazoForecast } from './candilazo.js';
 
-const state = { location:{...MUNICIPALITIES.find(x=>x.id==='30030')}, municipality:null, weather:null, openWeather:null, openWeatherSummary:null, openWeatherLoading:true, openWeatherError:null, astronomyError:null, chartError:null, date:localDateISO(), mode:'landscape', astronomy:null, currentScore:null, searchSelection:null, bestMoment:null, selectedOpportunityScore:null, candilazoRequestId:0 };
+const state = { location:{...MUNICIPALITIES.find(x=>x.id==='30030')}, municipality:null, weather:null, openWeather:null, openWeatherSummary:null, openWeatherLoading:true, openWeatherError:null, astronomyError:null, chartError:null, date:localDateISO(), mode:'landscape', astronomy:null, currentScore:null, searchSelection:null, bestMoment:null, selectedOpportunityScore:null };
 const $ = id => document.getElementById(id);
 let weatherRequestId=0;
 let openWeatherRequestId=0;
@@ -69,7 +68,7 @@ function bindUI(){
   window.addEventListener('mpwp:map-location', e=>selectCoordinate(e.detail.latitude,e.detail.longitude,'Coordenadas seleccionadas'));
   // Refresh the share-context immediately before navigation so date/mode/location
   // selected on Photography are transferred even if a weather request is still pending.
-  ['astronomy-link','open-astronomy','recommended-link','open-recommended'].forEach(id=>{
+  ['astronomy-link','open-astronomy','recommended-link','open-recommended','arrebol-link'].forEach(id=>{
     $(id)?.addEventListener('click',()=>updateAstronomyLink());
   });
 }
@@ -174,27 +173,6 @@ function renderSunTimeline(){
     </div>`;
 }
 
-async function refreshCandilazo(){
-  const host=$('candilazo-info'); if(!host) return;
-  const requestId=++state.candilazoRequestId;
-  host.setAttribute('aria-busy','true');
-  host.innerHTML='<div class="candilazo-loading" role="status">Calculando potencial de arrebol con Open-Meteo…</div>';
-  try {
-    if(!state.astronomy?.sunset) throw new Error('No se ha podido calcular el ocaso para esta ubicación y fecha.');
-    const result=await getCandilazoForecast({latitude:state.location.latitude,longitude:state.location.longitude,date:state.date,sunset:state.astronomy.sunset});
-    if(requestId!==state.candilazoRequestId) return;
-    if(result.status!=='ok') { host.innerHTML=`<div class="candilazo-empty" role="status">${escapeHtml(result.message)}</div>`; return; }
-    const pct=v=>Number.isFinite(v)?`${Math.round(v)} %`:'N/D';
-    const time=d=>formatTime(d,CONFIG.DEFAULT_TIME_ZONE);
-    const factorList=items=>items.map(x=>`<li>${escapeHtml(x)}</li>`).join('');
-    host.innerHTML=`<div class="candilazo-score-row"><div><span class="candilazo-kicker">Potencial estimado</span><strong class="candilazo-score">${result.score}<small>/100</small></strong></div><div class="candilazo-confidence"><span>Confianza de datos</span><strong>${result.confidence}/100</strong><small>${result.sampleCount} muestras horarias</small></div></div><div class="candilazo-window"><span>🌇 Franja orientativa</span><strong>${time(result.windowStart)}–${time(result.windowEnd)}</strong><small>Ocaso ${time(result.sunset)} · el modelo horario no resuelve cambios minuto a minuto.</small></div><div class="candilazo-factors"><div><h3>Factores favorables</h3><ul>${factorList(result.favorable)}</ul></div><div><h3>Factores desfavorables / cautelas</h3><ul>${factorList(result.unfavorable)}</ul></div></div><div class="candilazo-data-grid"><span>Nubes altas <b>${pct(result.factors.high)}</b></span><span>Nubes medias <b>${pct(result.factors.mid)}</b></span><span>Nubes bajas <b>${pct(result.factors.low)}</b></span><span>Visibilidad <b>${Number.isFinite(result.factors.visibility)?`${(result.factors.visibility/1000).toFixed(1)} km`:'N/D'}</b></span><span>Prob. precipitación <b>${pct(result.factors.precip)}</b></span></div><p class="candilazo-disclaimer">Heurística experimental, no probabilidad validada ni garantía de candilazo. La orientación del horizonte, la transparencia real y la evolución de las nubes pueden cambiar el resultado. Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>; cálculo derivado y modificado).</p>`;
-  } catch(error) {
-    if(requestId!==state.candilazoRequestId) return;
-    host.innerHTML=`<div class="candilazo-empty" role="alert"><strong>No se pudo calcular la predicción.</strong><p>${escapeHtml(error?.message||'Error desconocido')}</p><button type="button" class="secondary" id="retry-candilazo">Reintentar</button></div>`;
-    $('retry-candilazo')?.addEventListener('click',refreshCandilazo);
-  } finally { if(requestId===state.candilazoRequestId) host.setAttribute('aria-busy','false'); }
-}
-
 function refreshSolarDisplay(){
   const date=state.date;
   const location=state.location;
@@ -209,7 +187,6 @@ function refreshSolarDisplay(){
     $('sunset').textContent=formatTime(state.astronomy.sunset);
     $('day-length').textContent=state.astronomy.dayLengthMs ? `${Math.floor(state.astronomy.dayLengthMs/3600000)}h ${Math.round((state.astronomy.dayLengthMs%3600000)/60000)}m` : 'N/D';
     renderAstronomyPanels();
-    refreshCandilazo();
     return true;
   } catch(error) {
     state.astronomyError=error?.message||'Biblioteca astronómica no disponible';
@@ -219,7 +196,6 @@ function refreshSolarDisplay(){
     ['sunrise','sunset','day-length'].forEach(id=>$(id).textContent='N/D');
     ['moon-info','milky-way-info','astro-events'].forEach(id=>{ if($(id)) $(id).innerHTML=`<div class="component-error" role="status">Datos astronómicos no disponibles: ${escapeHtml(error.message)}</div>`; });
     $('retry-astronomy-local')?.addEventListener('click',()=>location.reload());
-    refreshCandilazo();
     return false;
   }
 }
@@ -516,6 +492,7 @@ function updateAstronomyLink(){
   const recommendedLink=$('recommended-link');
   const openLink=$('open-astronomy');
   const openRecommended=$('open-recommended');
+  const arrebolLink=$('arrebol-link');
   saveNavigationContext({ latitude:state.location.latitude, longitude:state.location.longitude, date:state.date, name:state.location.name || 'Ubicación seleccionada', mode:state.mode });
   const params=new URLSearchParams({
     lat:String(state.location.latitude),
@@ -529,6 +506,7 @@ function updateAstronomyLink(){
   if(recommendedLink) recommendedLink.href=`recomendados.html?${params.toString()}`;
   if(openLink) openLink.href=href;
   if(openRecommended) openRecommended.href=`recomendados.html?${params.toString()}`;
+  if(arrebolLink) arrebolLink.href=`arrebol.html?${params.toString()}`;
 }
 
 function renderOpportunities(ranked){ const scoreMap=new Map(ranked.map(x=>[x.location.id,x.score])); renderPhotoLocations(PHOTO_LOCATIONS,scoreMap); renderOpportunitiesMap(ranked); }

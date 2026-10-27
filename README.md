@@ -1,3 +1,10 @@
+## v35 — Mapa de potencial de arrebol (Candilazo)
+
+- Se elimina la tarjeta de predicción de arrebol de la página Fotografía; el mapa independiente pasa a ser el punto de acceso principal.
+- El mapa lee la ubicación y fecha compartidas desde los parámetros URL o el contexto de navegación de la sesión.
+- Añade el punto exacto seleccionado a la malla meteorológica, lo destaca en el mapa y abre su detalle al cargar.
+- Título de página y panel actualizado a “Mapa de potencial de arrebol (Candilazo)”.
+
 # Murcia Photo Weather Planner
 
 ## ¿Qué es?
@@ -500,3 +507,10 @@ La localización elegida en el mapa del atlas de contaminación lumínica se gua
 - Open-Meteo: la API gratuita está limitada a usos no comerciales, con límites de frecuencia y atribución CC BY 4.0. Revisa sus condiciones vigentes antes de usarla en un sitio comercial: https://open-meteo.com/en/terms.
 
 Pruebas de esta entrega: sintaxis de los módulos JavaScript, parseo HTML y pruebas aisladas de las fases lunares y de la heurística con datos simulados. No se ha verificado la API meteorológica real ni se ha desplegado el sitio.
+
+
+## v34 — Mapa regional de arrebol (experimental)
+
+Se añade `arrebol.html`, una página independiente con un mapa regional del potencial experimental de candilazo. La malla de puntos se consulta en una única petición multicoordenada a Open-Meteo, se calcula el índice por punto a partir de nubosidad por capas, visibilidad y precipitación alrededor del ocaso y se muestra la confianza de forma separada. Los resultados se almacenan temporalmente en `sessionStorage` para reducir peticiones repetidas. La capa es orientativa y no representa una probabilidad validada ni precisión a escala local.
+
+La página incluye atribución a Open-Meteo (CC BY 4.0) y OpenStreetMap. El mapa requiere conexión a Internet para cargar cartografía y previsiones. No se han realizado cambios ni despliegues en el sitio publicado al preparar esta versión.
