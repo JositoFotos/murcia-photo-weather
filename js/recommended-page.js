@@ -1,16 +1,16 @@
 import { CONFIG } from './config.js';
 import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
-import { getHourlyForecast, processAemetData } from './aemet.js';
+import { getRegionalOpenMeteoForecasts } from './open-meteo.js';
+import { MUNICIPALITIES } from '../data/municipalities.js';
 import { getMunicipalityById } from './locations.js';
 import { getOpenWeatherForecast } from './openweather.js';
 import { exploreMurcia } from './opportunities.js';
 import { initMap, renderOpportunities, setLocation, fitMurcia } from './map.js';
-import { loadWeatherCache, saveWeatherCache } from './storage.js';
 import { getNavigationContextFromUrl, getSavedNavigationContext, saveNavigationContext } from './navigation-context.js';
 
 const $=id=>document.getElementById(id);
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
-function describeSearchError(error){if(error?.status===429)return 'AEMET ha limitado temporalmente las peticiones (HTTP 429). Espera un momento y reintenta; la aplicación utiliza caché cuando hay datos previos.';if(error?.status===401||error?.status===403)return 'El servicio de AEMET ha rechazado la credencial configurada en Netlify.';if(error?.status>=500)return `El servicio meteorológico no responde (HTTP ${error.status}). Prueba más tarde.`;return error?.message||'No se pudieron obtener los datos. Comprueba la conexión y vuelve a intentarlo.';}
+function describeSearchError(error){if(error?.status===429)return 'Open-Meteo ha limitado temporalmente las consultas. Espera un momento y vuelve a intentarlo.';if(error?.status>=500)return `El servicio meteorológico no responde (HTTP ${error.status}). Prueba más tarde.`;return error?.message||'No se pudieron obtener los datos. Comprueba la conexión y vuelve a intentarlo.';}
 const params=new URLSearchParams(location.search);
 const urlContext=getNavigationContextFromUrl();
 const savedContext=getSavedNavigationContext();
@@ -38,31 +38,18 @@ function updateLinks(){
 
 const opportunityWeatherSessionCache = new Map();
 const opportunityOpenWeatherSessionCache = new Map();
-const RECOMMENDED_CACHE_PREFIX='mpwp_recommended_hourly_v1_';
-const RECOMMENDED_CACHE_TTL=6*60*60*1000;
-function readRecommendedCache(id){try{const item=JSON.parse(localStorage.getItem(`${RECOMMENDED_CACHE_PREFIX}${id}`)||'null');return item&&Date.now()-item.timestamp<RECOMMENDED_CACHE_TTL?item.data:null;}catch{return null;}}
-function saveRecommendedCache(id,data){try{localStorage.setItem(`${RECOMMENDED_CACHE_PREFIX}${id}`,JSON.stringify({timestamp:Date.now(),data}));}catch{ /* La caché local es opcional. */ }}
+let regionalOpenMeteoPromise=null;
 async function weatherLoader(m){
-  const cachedSession = opportunityWeatherSessionCache.get(m.id);
-  if (cachedSession) return cachedSession;
-  const cached = loadWeatherCache(m.id, CONFIG.CACHE_DURATION);
-  if (cached?.hourly?.length) { opportunityWeatherSessionCache.set(m.id, cached); return cached; }
-  const recommendedCached=readRecommendedCache(m.id);
-  if(recommendedCached?.hourly?.length){opportunityWeatherSessionCache.set(m.id,recommendedCached);return recommendedCached;}
-  try {
-    const rawHourly = await getHourlyForecast(m.id);
-    const normalized = processAemetData({ daily:null, hourly:rawHourly }, m);
-    opportunityWeatherSessionCache.set(m.id, normalized);
-    saveRecommendedCache(m.id, normalized);
-    return normalized;
-  } catch(error) {
-    const stale=loadWeatherCache(m.id, Number.POSITIVE_INFINITY);
-    if(stale?.hourly?.length && (!error?.status || error.status===429 || error.status>=500)) {
-      opportunityWeatherSessionCache.set(m.id, stale);
-      return stale;
-    }
-    throw error;
-  }
+  const cachedSession=opportunityWeatherSessionCache.get(m.id);
+  if(cachedSession)return cachedSession;
+  if(!regionalOpenMeteoPromise)regionalOpenMeteoPromise=getRegionalOpenMeteoForecasts(MUNICIPALITIES);
+  try{
+    const forecasts=await regionalOpenMeteoPromise;
+    for(const [id,forecast] of forecasts)opportunityWeatherSessionCache.set(id,forecast);
+    const result=forecasts.get(m.id);
+    if(!result?.hourly?.length)throw new Error(`Open-Meteo no ha devuelto datos horarios para ${m.name}.`);
+    return result;
+  }catch(error){regionalOpenMeteoPromise=null;throw error;}
 }
 
 async function openWeatherLoader(location){
@@ -116,10 +103,10 @@ function selectItem(item){
 async function run(){
   state.date=$('recommended-date').value||state.date;state.mode=$('recommended-mode').value;state.moment=$('recommended-moment').value;
   const {startHour,endHour}=parseMomentRange();
-  $('recommended-status').textContent='Analizando…';$('recommended-ranking').setAttribute('aria-busy','true');$('recommended-ranking').innerHTML='<div class="ranking-skeletons" role="status" aria-live="polite"><span class="sr-only">Consultando AEMET y OpenWeather…</span>'+Array.from({length:5},()=>'<div class="skeleton ranking-skeleton"></div>').join('')+'</div>';
+  $('recommended-status').textContent='Analizando…';$('recommended-ranking').setAttribute('aria-busy','true');$('recommended-ranking').innerHTML='<div class="ranking-skeletons" role="status" aria-live="polite"><span class="sr-only">Consultando Open-Meteo y OpenWeather…</span>'+Array.from({length:5},()=>'<div class="skeleton ranking-skeleton"></div>').join('')+'</div>';
   setStatus('Analizando localizaciones…','loading');updateLinks();
   try{
-    const ranked=await exploreMurcia({weatherLoader,openWeatherLoader,mode:state.mode,date:state.date,filterMoment:state.moment,startHour,endHour,onProgress:progress=>{const phase=progress.phase==='aemet'?'AEMET':'OpenWeather';$('recommended-status').textContent=`${phase} · ${progress.completed}/${progress.total} · ${progress.location}`;setStatus(`Consultando ${phase}: ${progress.completed} de ${progress.total} · ${progress.location}`,'loading');}});
+    const ranked=await exploreMurcia({weatherLoader,openWeatherLoader,mode:state.mode,date:state.date,filterMoment:state.moment,startHour,endHour,onProgress:progress=>{const phase=progress.phase==='open-meteo'?'Open-Meteo':'OpenWeather';$('recommended-status').textContent=`${phase} · ${progress.completed}/${progress.total} · ${progress.location}`;setStatus(`Consultando ${phase}: ${progress.completed} de ${progress.total} · ${progress.location}`,'loading');}});
     state.results=ranked;$('recommended-ranking').setAttribute('aria-busy','false');renderRanking();
     $('recommended-status').textContent=`${ranked.length} localizaciones`;
     renderOpportunities(ranked,item=>selectItem(item));
@@ -127,9 +114,9 @@ async function run(){
     if(!ranked.length){
       setStatus('No hay localizaciones con datos suficientes para la fecha o franja elegida. Prueba otra fecha o amplía el horario.','warning');
     } else if(ranked.errors?.length){
-      const failedAemet=ranked.errors.filter(x=>x.service==='AEMET').length;
+      const failedOpenMeteo=ranked.errors.filter(x=>x.service==='Open-Meteo').length;
       const failedOW=ranked.errors.filter(x=>x.service==='OpenWeather').length;
-      setStatus(`Resultados parciales: ${ranked.length} localizaciones · ${failedAemet} incidencias AEMET · ${failedOW} incidencias OpenWeather`,'warning');
+      setStatus(`Resultados parciales: ${ranked.length} localizaciones · ${failedOpenMeteo} incidencias Open-Meteo · ${failedOW} incidencias OpenWeather`,'warning');
       const note=document.createElement('p'); note.className='recommended-data-note'; note.setAttribute('role','status'); note.textContent='Algunas localizaciones no pudieron consultar todas las fuentes; sus índices pueden usar solo los datos disponibles.'; const containerNote=$('recommended-ranking'); containerNote.prepend(note);
     } else setStatus('Recomendaciones actualizadas');
   }catch(error){const message=describeSearchError(error);setStatus(`Error: ${message}`,'error');$('recommended-status').textContent='Error';$('recommended-ranking').setAttribute('aria-busy','false');$('recommended-ranking').innerHTML=`<div class="api-error" role="alert"><p>${escapeHtml(message)}</p><button type="button" class="primary" id="recommended-retry">Reintentar búsqueda</button></div>`;$('recommended-retry')?.addEventListener('click',run);}

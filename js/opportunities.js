@@ -26,8 +26,7 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
   const errors = [];
   const selectedDate = date || new Date().toISOString().slice(0,10);
 
-  // Consultamos AEMET una sola vez por municipio y de forma secuencial.
-  // Así evitamos ráfagas de peticiones que provocan HTTP 429.
+  // Open-Meteo agrupa todas las coordenadas municipales en una única consulta regional.
   const municipalities = [];
   const seenMunicipalities = new Set();
   for (const location of PHOTO_LOCATIONS) {
@@ -45,20 +44,20 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
       const weather = await weatherLoader(municipality);
       weatherByMunicipality.set(municipality.id, weather);
     } catch (error) {
-      errors.push({ service:'AEMET', municipality:municipality.name, error });
-      console.warn(`No se pudo obtener AEMET para ${municipality.name}:`, error);
-      rateLimited=error?.status===429;
+      errors.push({ service:'Open-Meteo', municipality:municipality.name, error });
+      console.warn(`No se pudo obtener Open-Meteo para ${municipality.name}:`, error);
+      rateLimited=true;
     }
-    if(typeof onProgress==='function') onProgress({phase:'aemet',completed:index+1,total:municipalities.length,location:municipality.name});
+    if(typeof onProgress==='function') onProgress({phase:'open-meteo',completed:index+1,total:municipalities.length,location:municipality.name});
     if(rateLimited) break;
-    if (index < municipalities.length - 1) await new Promise(resolve => setTimeout(resolve, 550));
+    
   }
 
-  // Si AEMET no ha devuelto ningún municipio, no gastamos llamadas de OpenWeather
+  // Si Open-Meteo no ha devuelto ningún municipio, no gastamos llamadas de OpenWeather
   // que no podrían producir recomendaciones útiles.
   if (!weatherByMunicipality.size && errors.length) {
     const preferred = errors.find(item => item.error?.status === 429) || errors[0];
-    const error = new Error(preferred.error?.status === 429 ? 'AEMET ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a intentarlo.' : `${preferred.service}: ${preferred.error?.message || 'no se pudieron obtener datos'}`);
+    const error = new Error(preferred.error?.status === 429 ? 'Open-Meteo ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a intentarlo.' : `${preferred.service}: ${preferred.error?.message || 'no se pudieron obtener datos'}`);
     error.status = preferred.error?.status;
     error.details = errors.map(item => ({ service:item.service, location:item.location || item.municipality, status:item.error?.status, message:item.error?.message }));
     throw error;
@@ -91,9 +90,8 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
     try {
       const hourlyForDate = weather.hourly?.filter(x => x.date === selectedDate) ?? [];
       if (!hourlyForDate.length) {
-        const error=new Error(`Sin predicción horaria para ${selectedDate}. Prueba una fecha disponible de AEMET.`);
-        errors.push({service:'AEMET',location:location.name,error});
-        console.warn(`Sin predicción horaria para ${location.name} el ${selectedDate}`);
+        const error=new Error(`Sin predicción horaria para ${selectedDate}. Prueba una fecha dentro de los próximos siete días.`);
+        errors.push({service:'Open-Meteo',location:location.name,error});
         continue;
       }
       const astronomy={ date:selectedDate, sunTimes: calculateSunTimes(selectedDate, location.latitude, location.longitude) };
@@ -127,7 +125,7 @@ export async function exploreMurcia({ weatherLoader, openWeatherLoader = null, m
   }
   if (!out.length && errors.length) {
     const preferred = errors.find(item => item.error?.status === 429) || errors[0];
-    const error = new Error(preferred.error?.status === 429 ? 'AEMET ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a intentarlo.' : `${preferred.service}: ${preferred.error?.message || 'no se pudieron obtener datos'}`);
+    const error = new Error(preferred.error?.status === 429 ? 'Open-Meteo ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a intentarlo.' : `${preferred.service}: ${preferred.error?.message || 'no se pudieron obtener datos'}`);
     error.status = preferred.error?.status;
     error.details = errors.map(item => ({ service:item.service, location:item.location || item.municipality, status:item.error?.status, message:item.error?.message }));
     throw error;

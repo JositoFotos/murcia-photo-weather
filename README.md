@@ -1,3 +1,11 @@
+## v36 — Open-Meteo en Recomendados
+
+La pestaña **Recomendados** utiliza ahora **Open-Meteo** como fuente principal de predicción horaria. Las coordenadas de los municipios necesarios se agrupan en una consulta regional y los resultados se guardan en caché local durante una hora. **OpenWeather se mantiene** para sus previsiones complementarias cada tres horas en las coordenadas exactas de cada localización (nubosidad, viento, lluvia y temperatura). Esta migración afecta únicamente a Recomendados: Fotografía y el resto de la aplicación conservan su integración meteorológica anterior con AEMET.
+
+La previsión de Open-Meteo utilizada en Recomendados cubre siete días. Si la fecha queda fuera del horizonte disponible, las localizaciones se omiten y la interfaz informa de la falta de datos. Open-Meteo requiere atribución; se enlaza su web en los créditos de Recomendados.
+
+---
+
 ## v35 — Mapa de potencial de arrebol (Candilazo)
 
 - Se elimina la tarjeta de predicción de arrebol de la página Fotografía; el mapa independiente pasa a ser el punto de acceso principal.
@@ -229,7 +237,7 @@ El objetivo es facilitar una lectura rápida del territorio y detectar dónde pu
 
 ## 🔎 Recomendados y planificación de sesión
 
-La pestaña **⭐ Recomendados** permite analizar automáticamente varias localizaciones fotográficas y ordenarlas según su interés. La búsqueda solo se ejecuta al pulsar **Buscar oportunidades**, para que puedas cambiar fecha, modo o franja horaria antes de consultar.
+La pestaña **⭐ Recomendados** permite analizar automáticamente varias localizaciones fotográficas y ordenarlas según su interés. Utiliza **Open-Meteo** como fuente principal de previsión horaria, agrupando las coordenadas municipales en una consulta regional. **OpenWeather** sigue aportando las previsiones complementarias en intervalos de tres horas para las coordenadas exactas de cada punto. La búsqueda solo se ejecuta al pulsar **Buscar oportunidades**, para que puedas cambiar fecha, modo o franja horaria antes de consultar.
 
 El sistema:
 
