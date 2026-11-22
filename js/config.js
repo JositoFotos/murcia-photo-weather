@@ -1,9 +1,4 @@
 export const CONFIG = {
-  // La clave real se guarda como secreto AEMET_API_KEY en Netlify; mantener vacía en el navegador.
-  AEMET_API_KEY: '',
-  // Public deployment: Netlify Function keeps the real AEMET key server-side.
-  AEMET_PROXY_URL: 'https://murcia-photo-weather.netlify.app/.netlify/functions/aemet',
-  AEMET_BASE_URL: 'https://opendata.aemet.es/opendata/api',
   CACHE_DURATION: 15 * 60 * 1000,
   DEFAULT_MAP_CENTER: [37.75, -1.15],
   DEFAULT_ZOOM: 9,

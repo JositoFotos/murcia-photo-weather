@@ -1,13 +1,13 @@
 import { CONFIG } from './config.js';
 import { MUNICIPALITIES } from '../data/municipalities.js';
 import { PHOTO_LOCATIONS } from '../data/photo-locations.js';
-import { getWeatherData, processAemetData } from './aemet.js';
-import { findDay, getHourlyForDate, summarizeWeather, summarizeSkyConditions, sortForecastDates, conditionLabel } from './weather.js';
+import { getOpenMeteoForecast, getRegionalOpenMeteoForecasts } from './open-meteo.js';
+import { findDay, getHourlyForDate, summarizeWeather, summarizeSkyConditions, sortForecastDates } from './weather.js';
 import { calculateSunTimes, formatTime, formatRange, getMoonData, calculateMilkyWay, calculateAstronomicalEvents } from './astronomy.js';
 import { calculatePhotographyScore, calculateSpecificIndices, calculateBestPhotographyWindows, calculateBestPhotographyMoment, buildPhotographyScoreData } from './photography.js';
 import { initMap, setLocation, renderPhotoLocations, renderOpportunities as renderOpportunityMarkers, fitMurcia } from './map.js';
 import { searchLocation, nearestMunicipality, getMunicipalityById } from './locations.js';
-import { loadWeatherCache, saveWeatherCache, saveHistory, loadHistory, deleteHistory, clearHistory, loadFavorites, saveFavorite, deleteFavorite } from './storage.js';
+import { saveHistory, loadHistory, deleteHistory, clearHistory, loadFavorites, saveFavorite, deleteFavorite } from './storage.js';
 import { exportCSV, exportJSON, copySummary, generateShareUrl } from './export.js';
 import { exploreMurcia, rankLocations } from './opportunities.js';
 import { getOpenWeatherForecast, getOpenWeatherForDate, summarizeOpenWeather } from './openweather.js';
@@ -17,6 +17,7 @@ const state = { location:{...MUNICIPALITIES.find(x=>x.id==='30030')}, municipali
 const $ = id => document.getElementById(id);
 let weatherRequestId=0;
 let openWeatherRequestId=0;
+let photoRegionalForecastPromise=null;
 
 function setStatus(kind,message) { const el=$('app-status'); if(!el) return; el.dataset.state=kind; el.textContent=message; el.setAttribute('aria-live', 'polite'); }
 function setLoadingState(isLoading){ document.body.classList.toggle('is-loading', isLoading); document.body.classList.remove('app-starting'); document.querySelector('.score-card')?.setAttribute('aria-busy', String(isLoading)); document.querySelector('.location-card')?.setAttribute('aria-busy', String(isLoading)); }
@@ -27,22 +28,6 @@ function friendlyOpenWeatherError(error){
   if(error?.status===401 || error?.status===403) return 'OpenWeather ha rechazado la credencial. Revisa el secreto OPENWEATHER_API en Netlify.';
   if(error?.status>=500) return `OpenWeather no responde correctamente (HTTP ${error.status}). Prueba de nuevo más tarde.`;
   return error?.message || 'No se han podido obtener los datos complementarios de OpenWeather.';
-}
-function friendlyAemetError(error){
-  if(/AEMET_API_KEY|secreto.*AEMET/i.test(error?.message||'')) return 'El secreto AEMET_API_KEY no está configurado correctamente en Netlify.';
-  if(error?.code==='API_KEY_MISSING') return 'El servicio AEMET no tiene configurada la credencial en Netlify. Revisa la variable secreta AEMET_API_KEY.';
-  if(error?.code==='API_KEY_FORMAT') return 'La clave de AEMET no tiene un formato válido. Revisa la configuración del servicio.';
-  if(error?.status===429) return 'AEMET ha limitado temporalmente las peticiones (HTTP 429). Espera un poco y vuelve a intentarlo; el resto de la interfaz seguirá disponible.';
-  if(error?.status===401 || error?.status===403) return 'AEMET ha rechazado la credencial de acceso. Comprueba la variable secreta AEMET_API_KEY en Netlify.';
-  if(error?.status>=500) return `El servicio de AEMET no está respondiendo correctamente (HTTP ${error.status}). Prueba de nuevo más tarde.`;
-  return error?.message || 'No se han podido obtener los datos meteorológicos de AEMET en este momento.';
-}
-function showAemetError(error){
-  const help=$('aemet-help'); if(!help) return;
-  help.hidden=false; help.replaceChildren();
-  const message=document.createElement('p'); message.textContent=friendlyAemetError(error);
-  const retry=document.createElement('button'); retry.type='button'; retry.className='primary'; retry.textContent='Reintentar AEMET'; retry.addEventListener('click',()=>refreshWeather(true));
-  help.append(message,retry);
 }
 function fmt(v,suffix=''){ return Number.isFinite(Number(v)) ? `${Math.round(Number(v)*10)/10}${suffix}` : 'N/D'; }
 function localDateISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -81,56 +66,44 @@ async function selectCoordinate(lat,lon,label='Coordenadas',load=true){ state.se
 async function refreshWeather(force=false){
   const requestId=++weatherRequestId;
   setLoadingState(true);
-  const help=$('aemet-help'); if(help) help.hidden=true;
+  const help=$('weather-help'); if(help) help.hidden=true;
   state.openWeather=null; state.openWeatherSummary=null; state.openWeatherLoading=true; state.openWeatherError=null;
   renderOpenWeather();
   let normalized;
   try {
-    if(!state.municipality) throw new Error('No se ha podido determinar un municipio de referencia para AEMET.');
-    setStatus('loading','Cargando predicción de AEMET…');
-    normalized=force?null:loadWeatherCache(state.municipality.id,CONFIG.CACHE_DURATION);
-    if(!normalized){ const raw=await getWeatherData(state.municipality.id); normalized=processAemetData(raw,state.municipality); saveWeatherCache(state.municipality.id,normalized); }
+    const place = state.municipality || { id:state.location.id, name:state.location.name, latitude:state.location.latitude, longitude:state.location.longitude };
+    setStatus('loading','Cargando previsión de Open-Meteo…');
+    normalized=await getOpenMeteoForecast(state.location.latitude,state.location.longitude,place,{force});
     if(requestId!==weatherRequestId) return;
     state.weather=normalized;
     const dates=sortForecastDates(normalized); if(!dates.includes(state.date)) state.date=dates[0] ?? state.date;
     renderDateTabs(dates); refreshDashboard(); updateAstronomyLink();
   } catch(error){
     if(requestId!==weatherRequestId) return;
-    const stale=state.municipality ? loadWeatherCache(state.municipality.id, Number.POSITIVE_INFINITY) : null;
-    const canUseStale=Boolean(stale?.hourly?.length) && (error?.status===429 || error?.status>=500 || error?.code==='NETWORK' || error?.code==='TIMEOUT');
-    if(canUseStale){
-      state.weather=stale;
-      const dates=sortForecastDates(stale); if(!dates.includes(state.date)) state.date=dates[0] ?? state.date;
-      renderDateTabs(dates); refreshDashboard(); showAemetError(error);
-      const cachedNotice=document.createElement('p'); const cachedAt=stale.updatedAt && !Number.isNaN(new Date(stale.updatedAt).getTime()) ? new Date(stale.updatedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}) : 'fecha no registrada'; cachedNotice.textContent=`Se muestran los últimos datos guardados (${cachedAt}) porque AEMET no ha respondido.`;
-      $('aemet-help')?.prepend(cachedNotice);
-      setStatus('warning',`AEMET no disponible; mostrando datos guardados. ${friendlyAemetError(error)}`);
-      state.openWeatherLoading=true; state.openWeatherError=null; state.openWeatherSummary=null;
-      setLoadingState(false);
-      await refreshOpenWeather(false, requestId);
-      return;
-    }
-    state.weather=null; state.openWeatherLoading=false; state.openWeatherError='AEMET aún no se ha cargado; vuelve a intentarlo cuando se restablezca el servicio.';
-    renderEmpty(friendlyAemetError(error)); renderDateTabs([state.date]); showAemetError(error); setStatus('error',friendlyAemetError(error));
-    renderOpenWeather();
+    state.weather=null; state.openWeatherLoading=false;
+    state.openWeatherError='La previsión principal no está disponible; comprueba la conexión e inténtalo de nuevo.';
+    const message=error?.message || 'No se han podido obtener datos meteorológicos de Open-Meteo.';
+    renderEmpty(message); renderDateTabs([state.date]);
+    if(help){ help.hidden=false; help.replaceChildren(); const p=document.createElement('p'); p.textContent=message; const retry=document.createElement('button'); retry.type='button'; retry.className='primary'; retry.textContent='Reintentar Open-Meteo'; retry.addEventListener('click',()=>refreshWeather(true)); help.append(p,retry); }
+    setStatus('error',message); renderOpenWeather();
     return;
   } finally {
     if(requestId===weatherRequestId) setLoadingState(false);
   }
   if(requestId!==weatherRequestId) return;
-  setStatus('loading','AEMET cargado · consultando datos complementarios de OpenWeather…');
+  setStatus('loading','Open-Meteo actualizado · consultando datos complementarios de OpenWeather…');
   await refreshOpenWeather(force, requestId);
   if(requestId!==weatherRequestId) return;
-  saveHistory({ municipalityId:state.municipality.id, location:state.location, date:state.date, mode:state.mode, score:state.currentScore?.score ?? null });
+  saveHistory({ municipalityId:state.municipality?.id ?? null, location:state.location, date:state.date, mode:state.mode, score:state.currentScore?.score ?? null });
   const warnings=[];
   if(state.openWeatherError) warnings.push(`OpenWeather: ${state.openWeatherError}`);
   if(state.astronomyError) warnings.push(`Astronomía: ${state.astronomyError}`);
   if(state.chartError) warnings.push(`Meteograma: ${state.chartError}`);
-  if(warnings.length) setStatus('warning',`AEMET actualizado con incidencias · ${warnings.join(' · ')}`);
+  if(warnings.length) setStatus('warning',`Open-Meteo actualizado con incidencias · ${warnings.join(' · ')}`);
   else setStatus('ready',`Datos cargados · ${new Date(normalized.updatedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
 }
 
-function renderDateTabs(dates){ const valid=(dates||[]).filter(Boolean); const picker=$('date-picker'); picker.value=state.date; picker.disabled=false; picker.min=valid[0]??''; picker.max=valid.at(-1)??''; $('date-tabs').innerHTML=''; valid.forEach((d,i)=>{ const b=document.createElement('button'); b.className='date-tab'; b.classList.toggle('active',d===state.date); b.setAttribute('aria-pressed',String(d===state.date)); b.textContent=valid.length===1 && d!==localDateISO()?dateLabel(d):(i===0?'Hoy':i===1?'Mañana':`+${i}`); b.title=d; b.addEventListener('click',async()=>{ state.date=d; state.selectedOpportunityScore=null; state.openWeatherSummary=null; state.openWeatherLoading=true; state.openWeatherError=null; picker.value=d; renderDateTabs(valid); picker.blur(); refreshSolarDisplay(); refreshDashboard(); await refreshOpenWeather(false); }); $('date-tabs').appendChild(b); }); if(!valid.length){ const b=document.createElement('span'); b.className='date-empty'; b.textContent='Sin fechas de AEMET'; $('date-tabs').appendChild(b); } }
+function renderDateTabs(dates){ const valid=(dates||[]).filter(Boolean); const picker=$('date-picker'); picker.value=state.date; picker.disabled=false; picker.min=valid[0]??''; picker.max=valid.at(-1)??''; $('date-tabs').innerHTML=''; valid.forEach((d,i)=>{ const b=document.createElement('button'); b.className='date-tab'; b.classList.toggle('active',d===state.date); b.setAttribute('aria-pressed',String(d===state.date)); b.textContent=valid.length===1 && d!==localDateISO()?dateLabel(d):(i===0?'Hoy':i===1?'Mañana':`+${i}`); b.title=d; b.addEventListener('click',async()=>{ state.date=d; state.selectedOpportunityScore=null; state.openWeatherSummary=null; state.openWeatherLoading=true; state.openWeatherError=null; picker.value=d; renderDateTabs(valid); picker.blur(); refreshSolarDisplay(); refreshDashboard(); await refreshOpenWeather(false); }); $('date-tabs').appendChild(b); }); if(!valid.length){ const b=document.createElement('span'); b.className='date-empty'; b.textContent='Sin fechas disponibles'; $('date-tabs').appendChild(b); } }
 
 function aggregateForScore(){
   const hourly=getHourlyForDate(state.weather,state.date);
@@ -202,17 +175,16 @@ function refreshSolarDisplay(){
 
 function refreshDashboard(){
   if(!state.weather){ renderEmpty('Sin datos meteorológicos disponibles. Comprueba el mensaje de estado y pulsa Actualizar para reintentar.'); return; }
-  const date=state.date; const location=state.location; const summary=summarizeWeather(state.weather,date);
+  const date=state.date; const location=state.location;
   const scoreOverride = state.selectedOpportunityScore && state.selectedOpportunityScore.locationId === location.id && state.selectedOpportunityScore.date === date && state.selectedOpportunityScore.mode === state.mode ? state.selectedOpportunityScore.scoreData : null;
   const normalizedMode = state.mode==='sunriseSunset'?'sunriseSunset':state.mode;
   const aggregated = aggregateForScore();
   const score = scoreOverride ?? calculatePhotographyScore(aggregated, normalizedMode);
   state.currentScore=score; const indices=calculateSpecificIndices(aggregated);
   $('location-name').textContent=location.name; $('coordinates').textContent=`${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`; $('municipality').textContent=state.municipality?.name ?? '—'; $('score').textContent=`${score.score}/100`; $('score-label').textContent=score.category.toUpperCase();
-  $('temperature').textContent=`${fmt(summary.temperature.current ?? summary.temperature.max,' °C')}`; $('temp-range').textContent=`${fmt(summary.temperature.min,' °C')} – ${fmt(summary.temperature.max,' °C')}`; $('rain-prob').textContent=fmt(summary.rainProbability,' %'); $('wind').textContent=fmt(summary.wind.mean,' km/h'); $('storm').textContent=conditionLabel(summary.stormProbability); $('humidity').textContent=fmt(summary.humidity.mean,' %');
   $('indice-grid').innerHTML=[['🌅 Amanecer',indices.sunrise],['☀️ Día',indices.day],['🌇 Atardecer',indices.sunset],['🌌 Noche',indices.night]].map(([l,v])=>`<div class="index-mini"><span>${l}</span><strong>${v}/100</strong></div>`).join('');
 
-  // Recalcula el sol localmente, de forma independiente del resultado AEMET.
+  // Los cálculos solares se realizan localmente y no dependen de la previsión meteorológica.
   refreshSolarDisplay();
   try { state.bestMoment = calculateBestPhotographyMoment({ hourly: aggregated.hourly, openWeatherPoints: aggregated.openWeatherPoints, astronomy: state.astronomy, mode: normalizedMode }); }
   catch { state.bestMoment=null; }
@@ -220,7 +192,7 @@ function refreshDashboard(){
   $('positives').innerHTML=score.positives.map(x=>`<li>✓ ${x}</li>`).join('') || '<li>Sin factores positivos identificados.</li>';
   $('negatives').innerHTML=score.negatives.map(x=>`<li>⚠ ${x}</li>`).join('') || '<li>Sin factores negativos identificados.</li>';
   $('recommendation').textContent=score.score>=81?'Excelente oportunidad fotográfica.':score.score>=61?'Buenas condiciones: la ventana merece consideración.':score.score>=41?'Condiciones aceptables, con factores a vigilar.':'Condiciones poco favorables para este modo.';
-  $('source-note').textContent=`Datos meteorológicos: AEMET. Índices fotográficos: cálculo propio. Fecha ${dateLabel(date)}.`;
+  $('source-note').textContent=`Datos meteorológicos: Open-Meteo y OpenWeather. Índices fotográficos: cálculo propio. Fecha ${dateLabel(date)}.`;
   try { state.chartError=null; renderMeteogram(); }
   catch(error) { state.chartError=error?.message||'Chart.js no disponible'; const loading=$('chart-loading'); if(loading){ loading.hidden=false; loading.innerHTML=`<div class="component-error" role="alert">No se pudo construir el meteograma: ${escapeHtml(error.message)}<p>Comprueba la conexión y recarga la página para volver a cargar Chart.js.</p><button type="button" class="secondary" id="retry-chart-library">Recargar meteograma</button></div>`; } $('retry-chart-library')?.addEventListener('click',()=>location.reload()); $('chart-loading')?.parentElement?.setAttribute('aria-busy','false'); }
   renderHistory(); renderFavorites(); renderPhotoLocations(PHOTO_LOCATIONS); updateAstronomyLink();
@@ -363,7 +335,7 @@ function renderMeteogram(){
   if(state._chart) state._chart.destroy();
   if(!window.Chart) throw new Error('Chart.js no está disponible. Comprueba la conexión y recarga la página.');
   const hourly=getHourlyForDate(state.weather,state.date).slice(0,24);
-  if(!hourly.length){ if(loading){loading.hidden=false;loading.innerHTML='<div class="empty" role="status">No hay datos horarios de AEMET para esta fecha.</div>'; } canvas?.parentElement?.setAttribute('aria-busy','false'); return; }
+  if(!hourly.length){ if(loading){loading.hidden=false;loading.innerHTML='<div class="empty" role="status">No hay datos horarios de Open-Meteo para esta fecha.</div>'; } canvas?.parentElement?.setAttribute('aria-busy','false'); return; }
 
   const parseHour = (raw) => {
     if(raw === null || raw === undefined || raw === '') return null;
@@ -384,9 +356,7 @@ function renderMeteogram(){
   const allSame=validCount>1 && new Set(extracted.filter(Number.isInteger)).size===1;
   const firstHour=validCount ? extracted.find(Number.isInteger) : 0;
 
-  // Prefer the hour carried by AEMET. If a malformed payload repeats the same
-  // hour for every point, use the ordered hourly sequence rather than drawing
-  // twenty-four misleading "00" labels.
+  // Prefer the timestamp supplied by Open-Meteo; fall back to sequence order if needed.
   const hours=hourly.map((x,i)=>{
     const direct=extracted[i];
     if(Number.isInteger(direct) && !allSame) return direct;
@@ -446,13 +416,12 @@ function renderEmpty(message){
   if($('moon-info')) $('moon-info').innerHTML='<div class="empty">Los cálculos astronómicos se muestran cuando la biblioteca está disponible.</div>';
   if($('milky-way-info')) $('milky-way-info').innerHTML='<div class="empty">Los cálculos astronómicos se muestran cuando la biblioteca está disponible.</div>';
   if($('astro-events')) $('astro-events').innerHTML='<div class="empty">Sin datos astronómicos calculados.</div>';
-  ['temperature','rain-prob','wind','storm','humidity','temp-range'].forEach(id=>{if($(id)) $(id).textContent='N/D';});
   $('score').textContent='—'; $('score-label').textContent='SIN DATOS';
-  $('indice-grid').innerHTML='<div class="empty">El índice requiere datos meteorológicos de AEMET.</div>';
+  $('indice-grid').innerHTML='<div class="empty">El índice requiere datos meteorológicos de Open-Meteo.</div>';
   $('positives').innerHTML=`<li class="empty">${escapeHtml(message||'No hay datos disponibles.')}</li>`;
   $('negatives').innerHTML='';
   $('recommendation').textContent=message||'No se puede generar una recomendación sin datos meteorológicos.';
-  $('source-note').textContent='No se ha podido obtener una predicción meteorológica de AEMET para esta consulta.';
+  $('source-note').textContent='No se ha podido obtener una predicción meteorológica de Open-Meteo para esta consulta.';
   $('best-moment-title').textContent='Mejor momento no disponible';
   $('best-moment-subtitle').textContent=message||'Se necesita una predicción meteorológica para identificar una ventana fotográfica.';
   $('best-moment-score').textContent='—';
@@ -480,7 +449,7 @@ async function doExplore(){
     setStatus('ready', failed ? `Exploración completada · ${ranked.length}/${PHOTO_LOCATIONS.length} localizaciones con datos` : 'Exploración completada.');
   } catch(e){
     $('ranking').setAttribute('aria-busy','false');
-    const message=e?.status===429?'AEMET ha limitado temporalmente las consultas (HTTP 429). Espera un momento y vuelve a buscar.':(e?.message||'No se pudieron consultar las localizaciones. Comprueba la conexión e inténtalo de nuevo.');
+    const message=e?.message||'No se pudieron consultar las localizaciones mediante Open-Meteo. Comprueba la conexión e inténtalo de nuevo.';
     setStatus('error',`Error al explorar Murcia: ${message}`);
     $('ranking').innerHTML=`<div class="api-error" role="alert"><p>${escapeHtml(message)}</p><button type="button" class="primary" id="retry-explore">Reintentar búsqueda</button></div>`;
     $('retry-explore')?.addEventListener('click',doExplore);
@@ -542,19 +511,17 @@ async function selectOpportunityResult(item){
   await selectCoordinate(item.location.latitude,item.location.longitude,item.location.name);
 }
 async function getWeatherForMunicipality(m){
-  const cached=loadWeatherCache(m.id,CONFIG.CACHE_DURATION);
-  if(cached)return cached;
-  try {
-    const normalized=processAemetData(await getWeatherData(m.id),m);
-    saveWeatherCache(m.id,normalized);
-    return normalized;
-  } catch(error){
-    if(error?.status===429){
-      const stale=loadWeatherCache(m.id,Infinity);
-      if(stale) return stale;
-    }
-    throw error;
+  if(!photoRegionalForecastPromise){
+    const ids=new Set(PHOTO_LOCATIONS.map(location=>location.municipalityId).filter(Boolean));
+    const municipalities=[...ids].map(getMunicipalityById).filter(Boolean);
+    photoRegionalForecastPromise=getRegionalOpenMeteoForecasts(municipalities);
   }
+  try{
+    const forecasts=await photoRegionalForecastPromise;
+    const forecast=forecasts.get(m.id);
+    if(!forecast) throw new Error(`Open-Meteo no ha devuelto previsión para ${m.name}.`);
+    return forecast;
+  }catch(error){photoRegionalForecastPromise=null;throw error;}
 }
 
 function snapshot(){ const summary=state.weather?summarizeWeather(state.weather,state.date):null; return { location:state.location, municipality:state.municipality, date:state.date, mode:state.mode, weather:state.weather, openWeather:state.openWeatherSummary ?? null, astronomy:state.astronomy, moon:state.moon ?? null, milkyWay:state.milkyWay ?? null, astroEvents:state.astroEvents ?? [], indices:state.weather?calculateSpecificIndices(aggregateForScore()):null, summary, recommendation:$('recommendation')?.textContent ?? 'Sin datos' }; }
@@ -589,4 +556,4 @@ async function boot(){
   renderDateTabs([state.date]);
   await selectMunicipality(state.municipality);
 }
-boot().catch(error=>{ setLoadingState(false); const message=`No se pudo iniciar el mapa o la interfaz: ${error?.message||'error inesperado'}. Comprueba la conexión y recarga la página.`; setStatus('error',message); showAemetError(new Error(message)); });
+boot().catch(error=>{ setLoadingState(false); const message=`No se pudo iniciar el mapa o la interfaz: ${error?.message||'error inesperado'}. Comprueba la conexión y recarga la página.`; setStatus('error',message); const help=$('weather-help'); if(help){help.hidden=false;help.textContent=message;} });

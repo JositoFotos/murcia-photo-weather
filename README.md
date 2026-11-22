@@ -1,8 +1,19 @@
-## v36 — Open-Meteo en Recomendados
+## v38 — Limpieza de código no utilizado
 
-La pestaña **Recomendados** utiliza ahora **Open-Meteo** como fuente principal de predicción horaria. Las coordenadas de los municipios necesarios se agrupan en una consulta regional y los resultados se guardan en caché local durante una hora. **OpenWeather se mantiene** para sus previsiones complementarias cada tres horas en las coordenadas exactas de cada localización (nubosidad, viento, lluvia y temperatura). Esta migración afecta únicamente a Recomendados: Fotografía y el resto de la aplicación conservan su integración meteorológica anterior con AEMET.
+- Se elimina `js/candilazo.js`, módulo heredado de la antigua tarjeta de predicción que ya no importaba ninguna página ni módulo. El mapa regional de arrebol (`arrebol.html`) conserva su implementación independiente.
+- Se retiran de `css/mediterranean-blue.css` los estilos exclusivos de aquella tarjeta, que ya no tenía elementos asociados.
+- Se comprueba que no existe una página `radar.html` ni referencias activas a ella en esta versión; no se altera ninguna función meteorológica o cartográfica en uso.
 
-La previsión de Open-Meteo utilizada en Recomendados cubre siete días. Si la fecha queda fuera del horizonte disponible, las localizaciones se omiten y la interfaz informa de la falta de datos. Open-Meteo requiere atribución; se enlaza su web en los créditos de Recomendados.
+## v40 — Migración completa de AEMET a Open-Meteo
+
+- **Fotografía** consulta ahora Open-Meteo para las coordenadas exactas seleccionadas (no para el municipio de referencia), con previsión horaria y diaria de hasta siete días.
+- **Exploración fotográfica** y **Recomendados** agrupan las coordenadas municipales en consultas regionales de Open-Meteo y guardan la respuesta en caché local durante una hora.
+- **OpenWeather se mantiene** como fuente complementaria para previsiones cada tres horas en las coordenadas exactas de cada localización (nubosidad, viento, lluvia y temperatura).
+- Se eliminan `js/aemet.js` y `netlify/functions/aemet.js`, así como los parámetros de configuración, mensajes de error, etiquetas y referencias operativas de AEMET. El proyecto ya no realiza consultas a AEMET ni necesita `AEMET_API_KEY`.
+- Open-Meteo no ofrece una probabilidad horaria de tormenta equivalente a la de AEMET. La aplicación identifica los códigos meteorológicos de tormenta (95, 96 y 99); para el resto de horas la probabilidad de tormenta queda como dato no disponible, sin inventar un porcentaje.
+- Se conservan los índices fotográficos propios y la integración complementaria de OpenWeather.
+
+La previsión de Open-Meteo cubre hasta siete días. La aplicación mantiene su atribución mediante el enlace a Open-Meteo en los créditos.
 
 ---
 
@@ -21,7 +32,7 @@ La previsión de Open-Meteo utilizada en Recomendados cubre siete días. Si la f
 
 > **¿Dónde y cuándo tengo mejores condiciones para hacer fotografías en la Región de Murcia?**
 
-La aplicación combina predicción meteorológica oficial de **AEMET**, información solar y lunar, cálculos astronómicos y un sistema propio de valoración fotográfica para convertir los datos meteorológicos en recomendaciones prácticas.
+La aplicación combina predicción meteorológica de **Open-Meteo** y datos complementarios de OpenWeather, información solar y lunar, cálculos astronómicos y un sistema propio de valoración fotográfica para convertir los datos meteorológicos en recomendaciones prácticas.
 
 No es una aplicación meteorológica genérica. Está orientada a la **planificación de sesiones fotográficas**, tanto diurnas como nocturnas.
 
@@ -73,7 +84,7 @@ Cada modo modifica los criterios y pesos utilizados en el índice fotográfico. 
 
 ## Índice fotográfico
 
-La aplicación calcula un **Índice fotográfico de 0 a 100**. Es un cálculo propio de la aplicación y **no es una predicción oficial de AEMET**.
+La aplicación calcula un **Índice fotográfico de 0 a 100**. Es un cálculo propio de la aplicación y **no es una predicción meteorológica oficial**.
 
 Las categorías son:
 
@@ -95,32 +106,19 @@ También se muestran factores positivos y negativos para explicar por qué una s
 
 ## El cielo y la nubosidad
 
-La tarjeta **Datos complementarios · OpenWeather** muestra la evolución de nubosidad total en intervalos de tres horas, y la aplicación utiliza ese dato como complemento de la previsión oficial de AEMET para orientar la valoración fotográfica.
+La tarjeta **Datos complementarios · OpenWeather** muestra la evolución de nubosidad total en intervalos de tres horas, y la aplicación utiliza ese dato como complemento de la previsión principal de Open-Meteo para orientar la valoración fotográfica.
 
 OpenWeather aporta nubosidad total porcentual, no una separación directa entre nubes bajas, medias y altas en el producto de previsión gratuito que utiliza esta aplicación. Por ello, la interfaz no inventa porcentajes por capas.
 
 ---
 
-## Diagnóstico de errores de AEMET
-
-Las respuestas de error de AEMET pueden incluir un estado dentro del JSON aunque la respuesta HTTP exterior sea 200. La función de Netlify normaliza ahora esos estados para que la aplicación distinga correctamente entre credenciales rechazadas, límite de peticiones, falta de datos y una respuesta con formato inesperado. No se muestran claves ni secretos en el navegador.
-
 ## Meteorología
 
-Los datos meteorológicos proceden de **AEMET** y pueden incluir, cuando están disponibles:
+La previsión principal procede de **Open-Meteo** e incluye, cuando están disponibles, temperatura, humedad relativa, probabilidad y cantidad de precipitación, nubosidad por capas, viento, rachas y código de estado meteorológico. La consulta de Fotografía utiliza las coordenadas exactas del punto seleccionado y ofrece hasta siete días de previsión horaria y diaria.
 
-- Temperatura.
-- Temperatura máxima y mínima.
-- Probabilidad de precipitación.
-- Precipitación.
-- Estado del cielo.
-- Viento y dirección.
-- Rachas.
-- Probabilidad de tormenta.
-- Humedad.
-- Visibilidad y otras variables disponibles.
+La probabilidad de tormenta no es una variable horaria independiente en esta integración: solo se marca cuando el código meteorológico indica tormenta; en los demás casos queda como dato no disponible.
 
-Cuando AEMET no proporciona un dato, la aplicación muestra **N/D** en lugar de inventar un valor.
+Cuando Open-Meteo no proporciona una variable, la aplicación muestra **N/D** en lugar de inventar un valor.
 
 ---
 
@@ -340,7 +338,7 @@ No necesitas instalar ningún programa ni crear una cuenta.
 
 Al consultar datos de servicios externos, la aplicación muestra indicadores de carga mientras la petición está en curso. Si un servicio no responde, la interfaz explica qué fuente ha fallado y presenta una opción para reintentar cuando corresponda.
 
-- **AEMET** es la fuente principal de predicción meteorológica. Puede limitar temporalmente las peticiones; si hay una previsión guardada, la aplicación puede mostrarla indicando que procede de caché.
+- **Open-Meteo** es la fuente principal de previsión meteorológica en Fotografía y Recomendados. La consulta se almacena localmente durante una hora para reducir peticiones.
 - **OpenWeather** aporta variables meteorológicas complementarias, con previsión en tramos de tres horas. Si el servicio no está disponible, la tarjeta muestra el error sin bloquear el resto del dashboard.
 - **Astronomía** (Sol y Luna) se calcula localmente con SunCalc. La previsión meteorológica que acompaña al análisis nocturno se carga por separado.
 - **Contaminación lumínica** utiliza el World Atlas of Artificial Night Sky Brightness 2025 y dispone de una opción para volver a consultar el punto.
@@ -359,9 +357,9 @@ La geolocalización requiere el permiso correspondiente del navegador y puede de
 
 ## 🌐 Fuentes de información
 
-### AEMET
+### Open-Meteo
 
-Los datos meteorológicos proceden de la **API oficial de AEMET OpenData**. La aplicación utiliza los recursos de predicción disponibles y no sustituye a la información oficial de AEMET.
+La previsión meteorológica se obtiene de la API de Open-Meteo. La aplicación conserva la atribución y el enlace a su proveedor.
 
 ### OpenStreetMap / Leaflet
 
@@ -453,7 +451,7 @@ Murcia Photo Weather Planner es un proyecto en evolución. Se irán incorporando
 ## Secciones principales
 
 ### 📸 Fotografía
-Consulta una localización, fecha y modo fotográfico. Aquí se concentran AEMET, OpenWeather, la línea de luz solar, el meteograma, el índice fotográfico y el **mejor momento** para el modo seleccionado.
+Consulta una localización, fecha y modo fotográfico. Aquí se concentran Open-Meteo, OpenWeather, la línea de luz solar, el meteograma, el índice fotográfico y el **mejor momento** para el modo seleccionado.
 
 ### 🌌 Astronomía
 Planifica fotografía nocturna con Luna, Vía Láctea, condiciones nocturnas, calendario lunar y eventos astronómicos. La ubicación y fecha se conservan al navegar entre secciones.
@@ -522,3 +520,7 @@ Pruebas de esta entrega: sintaxis de los módulos JavaScript, parseo HTML y prue
 Se añade `arrebol.html`, una página independiente con un mapa regional del potencial experimental de candilazo. La malla de puntos se consulta en una única petición multicoordenada a Open-Meteo, se calcula el índice por punto a partir de nubosidad por capas, visibilidad y precipitación alrededor del ocaso y se muestra la confianza de forma separada. Los resultados se almacenan temporalmente en `sessionStorage` para reducir peticiones repetidas. La capa es orientativa y no representa una probabilidad validada ni precisión a escala local.
 
 La página incluye atribución a Open-Meteo (CC BY 4.0) y OpenStreetMap. El mapa requiere conexión a Internet para cargar cartografía y previsiones. No se han realizado cambios ni despliegues en el sitio publicado al preparar esta versión.
+
+## v37 — Coherencia de controles de cabecera
+
+Se igualan los controles de acción (Actualizar, Usar mi ubicación y Compartir) con los enlaces de navegación (Fotografía, Astronomía, Recomendados y Mapa de arrebol): misma altura, tipografía, peso, alineación, espaciado y radio de borde. En móvil se aplica una escala compacta común. No se modifican las funciones de los botones ni las fuentes meteorológicas.

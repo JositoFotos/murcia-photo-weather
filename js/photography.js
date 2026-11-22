@@ -109,7 +109,7 @@ export function calculatePhotographyScore(data, mode='landscape') {
   const cloudiness = cloudinessScoreForMode(data, mode);
   let adjusted = raw;
   if (Number.isFinite(cloudiness)) {
-    // La nubosidad total de OpenWeather complementa el estado del cielo de AEMET.
+    // La nubosidad total de OpenWeather complementa la previsión de Open-Meteo.
     // Le damos una influencia visible, pero limitada, para no dominar al resto
     // de factores del índice.
     const influence = mode === 'nocturnal' ? 0.18 : 0.12;
